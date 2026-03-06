@@ -3,21 +3,25 @@ package cloud.apposs.websocket.netty;
 import cloud.apposs.ioc.BeanFactory;
 import cloud.apposs.util.StrUtil;
 import cloud.apposs.websocket.WSConfig;
+import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.WSSessionBox;
 import cloud.apposs.websocket.annotation.Order;
 import cloud.apposs.websocket.annotation.ServerEndpoint;
 import cloud.apposs.websocket.commandar.CommandarInvocation;
 import cloud.apposs.websocket.commandar.CommandarRouter;
+import cloud.apposs.websocket.distributed.DistributedServiceFactory;
+import cloud.apposs.websocket.distributed.IDistributedService;
+import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.interceptor.CommandarInterceptor;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.JsonSupport;
 import cloud.apposs.websocket.protocol.JsonSupportWrapper;
+import cloud.apposs.websocket.scheduler.CancelableScheduler;
+import cloud.apposs.websocket.scheduler.HashedWheelTimeoutScheduler;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 public class ApplicationHandler {
     private final WSConfig configuration;
@@ -37,6 +41,10 @@ public class ApplicationHandler {
     private final WSSessionBox sessionBox = new WSSessionBox();
 
     private final NamespacesHub namespacesHub;
+
+    private final CancelableScheduler scheduler = new HashedWheelTimeoutScheduler();
+
+    private final IDistributedService distributedService;
 
     private final WebSocketContextHolder contextHolder;
 
@@ -83,7 +91,9 @@ public class ApplicationHandler {
         beanFactory.load(basePackageList);
         // 扫描basePackage包下所有的ServerEndpoint注解类，并注册到命名空间中和Commandar处理器中
         List<Class<?>> endpointClassList = beanFactory.getClassAnnotationList(ServerEndpoint.class);
-        namespacesHub = new NamespacesHub(configuration);
+        // 初始化分布式服务
+        distributedService = DistributedServiceFactory.newDistributedService(configuration.getDistributedType(), configuration);
+        namespacesHub = new NamespacesHub(configuration, distributedService);
         for (Class<?> endpointClass : endpointClassList) {
             ServerEndpoint serverEndpoint = endpointClass.getAnnotation(ServerEndpoint.class);
             // 初始化命名空间
@@ -111,13 +121,30 @@ public class ApplicationHandler {
         for (CommandarInterceptor interceptor : interceptorList) {
             commandarInterceptorSupport.addInterceptor(interceptor);
         }
-        contextHolder = new WebSocketContextHolder(namespacesHub, commandarRouter, commandarInvocation, commandarInterceptorSupport);
+        contextHolder = new WebSocketContextHolder(namespacesHub, scheduler, distributedService, commandarRouter, commandarInvocation, commandarInterceptorSupport);
         pipeline = new SocketIOChannelInitializer(contextHolder, sessionBox);
         pipeline.initialize(configuration);
     }
 
     public SocketIOChannelInitializer getPipeline() {
         return pipeline;
+    }
+
+    /**
+     * 应用关闭时调用，进行资源清理等操作，包括
+     * <pre>
+     *      1. 注销所有会话的分布式订阅
+     * </pre>
+     */
+    public void shutdown() {
+        Map<UUID, WSSession> sessions = sessionBox.getSessionBox();
+        IPubSubService pubsubService = distributedService.getPubSubService();
+        for (Map.Entry<UUID, WSSession> socketIOSessionEntry : sessions.entrySet()) {
+            UUID sessionId = socketIOSessionEntry.getKey();
+            WSSession session = socketIOSessionEntry.getValue();
+            pubsubService.unregisterSession(session.getNamespace().getName(), sessionId);
+        }
+        distributedService.shutdown();
     }
 
     /**

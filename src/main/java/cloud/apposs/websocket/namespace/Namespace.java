@@ -3,9 +3,11 @@ package cloud.apposs.websocket.namespace;
 import cloud.apposs.logger.Logger;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
-import cloud.apposs.websocket.broadcast.BroadcastOperations;
-import cloud.apposs.websocket.broadcast.MultiRoomBroadcastOperations;
-import cloud.apposs.websocket.broadcast.SingleRoomBroadcastOperations;
+import cloud.apposs.websocket.broadcast.*;
+import cloud.apposs.websocket.distributed.IDistributedService;
+import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
+import cloud.apposs.websocket.distributed.repository.IRepositoryService;
+import cloud.apposs.websocket.protocol.Packet;
 import io.netty.util.internal.PlatformDependent;
 
 import java.util.*;
@@ -21,17 +23,20 @@ public final class Namespace {
 
     private final WSConfig configuration;
 
+    private final IDistributedService distributedService;
+
     // 该命名空间下的所有客户端连接
-    private final Map<UUID, WSSession> sessionList = new ConcurrentHashMap<UUID, WSSession>();
+    private final Map<UUID, WSSession> sessionList = new ConcurrentHashMap<>();
 
     // 当前房间加入的所有客户端，方便通过房间名查找客户端连接
     private final ConcurrentMap<String, Set<UUID>> roomClients = PlatformDependent.newConcurrentHashMap();
     // 当前客户端加入的所有房间，方便通过客户端连接查找房间集合
     private final ConcurrentMap<UUID, Set<String>> clientRooms = PlatformDependent.newConcurrentHashMap();
 
-    public Namespace(String name, WSConfig configuration) {
+    public Namespace(String name, WSConfig configuration, IDistributedService distributedService) {
         this.name = name;
         this.configuration = configuration;
+        this.distributedService = distributedService;
     }
 
     public String getName() {
@@ -42,6 +47,12 @@ public final class Namespace {
         return getSession(UUID.fromString(sessionId));
     }
 
+    /**
+     * 获取当前实例下指定会话ID的客户端连接
+     *
+     * @param  uuid 会话ID
+     * @return 客户端连接，如果不存在则返回null
+     */
     public WSSession getSession(UUID uuid) {
         return sessionList.get(uuid);
     }
@@ -50,31 +61,22 @@ public final class Namespace {
         sessionList.put(session.getSessionId(), session);
     }
 
-    public Collection<WSSession> getAllSessions() {
+    /**
+     * 获取当前实例下的所有客户端会话连接
+     *
+     * @return 客户端会话连接集合
+     */
+    public Collection<WSSession> getSessions() {
         return Collections.unmodifiableCollection(sessionList.values());
     }
 
     /**
-     * 获取当前命名空间下所有客户端连接加入的所有房间
+     * 获取分布式环境下当前命名空间下所有客户端连接的会话ID和所在实例ID映射关系
      *
-     * @return 房间名集合
+     * @return 会话ID和所在实例ID映射关系
      */
-    public Set<String> getRooms() {
-        return roomClients.keySet();
-    }
-
-    /**
-     * 获取指定客户端连接加入的所有房间
-     *
-     * @param session 客户端连接
-     * @return 房间名集合
-     */
-    public Set<String> getRooms(WSSession session) {
-        Set<String> rooms = clientRooms.get(session.getSessionId());
-        if (rooms == null) {
-            return Collections.emptySet();
-        }
-        return Collections.unmodifiableSet(rooms);
+    public Map<UUID, String> getDistributedSessions() {
+        return distributedService.getPubSubService().getAllSessions(name);
     }
 
     /**
@@ -83,7 +85,7 @@ public final class Namespace {
      * @param  room 房间名
      * @return 房间内的所有客户端连接
      */
-    public Collection<WSSession> getRoomClients(String room) {
+    public Collection<WSSession> getRoomSessions(String room) {
         Set<UUID> sessionIds = roomClients.get(room);
 
         if (sessionIds == null) {
@@ -92,30 +94,91 @@ public final class Namespace {
 
         List<WSSession> result = new ArrayList<WSSession>(sessionIds.size());
         for (UUID sessionId : sessionIds) {
-            WSSession client = sessionList.get(sessionId);
-            if(client != null) {
-                result.add(client);
+            WSSession session = sessionList.get(sessionId);
+            if(session != null) {
+                result.add(session);
             }
         }
         return result;
     }
 
     /**
-     * 获取指定房间内的所有客户端连接数量
+     * 获取分布式环境下当前命名空间下所有客户端连接加入的所有房间
      *
-     * @param  room 房间名
-     * @return 房间内的所有客户端连接数量
+     * @return 房间名集合
      */
-    public int getRoomClientsInCluster(String room) {
-        Set<UUID> sessionIds = roomClients.get(room);
-        return sessionIds == null ? 0 : sessionIds.size();
+    public Set<String> getAllDistributedRooms() {
+        return roomClients.keySet();
+    }
+
+    /**
+     * 获取指定客户端连接加入的所有房间
+     *
+     * @param sessionId 客户端连接ID
+     * @return 房间名集合
+     */
+    public Set<String> getSessionDistributedRooms(UUID sessionId) {
+        Set<String> rooms = clientRooms.get(sessionId);
+        if (rooms == null) {
+            return Collections.emptySet();
+        }
+        return Collections.unmodifiableSet(rooms);
+    }
+
+    /**
+     * 获取分布式服务中的发布订阅服务，主要用于分布式环境下的消息广播和事件通知
+     *
+     * @return 发布订阅服务实例
+     */
+    public IPubSubService getPubSubService() {
+        return distributedService.getPubSubService();
+    }
+
+    /**
+     * 获取分布式服务中的数据存储服务，主要用于分布式环境下的自定义数据存储和查询
+     *
+     * @return 数据存储服务实例
+     */
+    public IRepositoryService getRepositoryService() {
+        return distributedService.getRepositoryService();
+    }
+
+    /**
+     * 获取分布式环境下指定会话ID的客户端连接
+     *
+     * @param  sessionId 客户端连接ID
+     * @return 客户端连接对象，如果当前实例没有该连接，则返回null
+     */
+    public BroadcastOperations getSessionOperations(UUID sessionId) {
+        if (!distributedService.getPubSubService().isClientRegistered(name, sessionId)) {
+            return null;
+        }
+        return new SingleSessionBroadcastOperations(name, sessionId, sessionList, distributedService);
+    }
+
+    /**
+     * 获取分布式环境下指定会话ID集合的客户端连接
+     *
+     * @param  sessionIds 客户端连接ID集合
+     * @return 客户端连接对象集合
+     */
+    public BroadcastOperations getMultiSessionOperations(Collection<UUID> sessionIds) {
+        Set<UUID> operationsList = new HashSet<>(sessionIds.size());
+        IPubSubService pubsubService = distributedService.getPubSubService();
+        for (UUID sessionId : sessionIds) {
+            if (!pubsubService.isClientRegistered(name, sessionId)) {
+                continue;
+            }
+            operationsList.add(sessionId);
+        }
+        return new MultiSessionBroadcastOperations(name, operationsList, sessionList, distributedService);
     }
 
     /**
      * 获取当前命名空间下所有默认房间内的客户端连接
      */
     public BroadcastOperations getBroadcastOperations() {
-        return new SingleRoomBroadcastOperations(getName(), getName(), sessionList.values());
+        return new SingleRoomBroadcastOperations(getName(), getName(), sessionList.values(), distributedService);
     }
 
     /**
@@ -125,7 +188,7 @@ public final class Namespace {
      * @return 房间内的所有客户端连接
      */
     public BroadcastOperations getRoomOperations(String room) {
-        return new SingleRoomBroadcastOperations(getName(), room, getRoomClients(room));
+        return new SingleRoomBroadcastOperations(getName(), room, getRoomSessions(room), distributedService);
     }
 
     /**
@@ -134,12 +197,25 @@ public final class Namespace {
      * @param  rooms 房间名
      * @return 房间内的所有客户端连接
      */
-    public BroadcastOperations getRoomOperations(String... rooms) {
+    public BroadcastOperations getRoomOperations(Collection<String> rooms) {
         List<BroadcastOperations> roomList = new ArrayList<>();
         for (String room : rooms) {
-            roomList.add(new SingleRoomBroadcastOperations(getName(), room, getRoomClients(room)));
+            roomList.add(new SingleRoomBroadcastOperations(getName(), room, getRoomSessions(room), distributedService));
         }
         return new MultiRoomBroadcastOperations(roomList);
+    }
+
+    /**
+     * 广播消息到指定房间的所有客户端连接
+     *
+     * @param room 房间名
+     * @param packet 消息数据包
+     */
+    public void broadcast(String room, Packet packet) throws Exception {
+        Iterable<WSSession> sessions = getRoomSessions(room);
+        for (WSSession session : sessions) {
+            session.send(packet);
+        }
     }
 
     /**
@@ -171,8 +247,8 @@ public final class Namespace {
      * @param sessionId 客户端连接ID
      */
     public void join(String room, UUID sessionId) {
-        doJoinRoom(roomClients, room, sessionId);
-        doJoinRoom(clientRooms, sessionId, room);
+        handleJoinRoom(roomClients, room, sessionId);
+        handleJoinRoom(clientRooms, sessionId, room);
     }
 
     /**
@@ -204,11 +280,11 @@ public final class Namespace {
      * @param sessionId 客户端连接ID
      */
     public void leave(String room, UUID sessionId) {
-        doLeaveRoom(roomClients, room, sessionId);
-        doLeaveRoom(clientRooms, sessionId, room);
+        handleLeaveRoom(roomClients, room, sessionId);
+        handleLeaveRoom(clientRooms, sessionId, room);
     }
 
-    private <K, V> void doJoinRoom(ConcurrentMap<K, Set<V>> map, K key, V value) {
+    private <K, V> void handleJoinRoom(ConcurrentMap<K, Set<V>> map, K key, V value) {
         Set<V> clients = map.get(key);
         if (clients == null) {
             clients = Collections.newSetFromMap(PlatformDependent.<V, Boolean>newConcurrentHashMap());
@@ -221,11 +297,11 @@ public final class Namespace {
         // object may be changed due to other concurrent call
         if (clients != map.get(key)) {
             // re-join if queue has been replaced
-            doJoinRoom(map, key, value);
+            handleJoinRoom(map, key, value);
         }
     }
 
-    private <K, V> void doLeaveRoom(ConcurrentMap<K, Set<V>> map, K room, V sessionId) {
+    private <K, V> void handleLeaveRoom(ConcurrentMap<K, Set<V>> map, K room, V sessionId) {
         Set<V> clients = map.get(room);
         if (clients == null) {
             return;
@@ -241,7 +317,7 @@ public final class Namespace {
         sessionList.remove(session.getSessionId());
         Set<String> joinedRooms = session.getAllRooms();
         for (String joinedRoom : joinedRooms) {
-            doLeaveRoom(roomClients, joinedRoom, session.getSessionId());
+            handleLeaveRoom(roomClients, joinedRoom, session.getSessionId());
         }
         clientRooms.remove(session.getSessionId());
         Logger.debug("Client %s for namespace %s has been disconnected", session.getSessionId(), name);

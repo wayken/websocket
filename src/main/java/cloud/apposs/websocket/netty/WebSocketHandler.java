@@ -53,7 +53,7 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
                             new WebSocketFrameAggregator(configuration.getMaxFramePayloadLength()));
                     // 发送握手数据
                     WSSession session = context.channel().attr(ChannelAttributeKey.SESSION).get();
-                    AuthPacket authPacket = new AuthPacket(session.getSessionId(), configuration.getHandshakeParameter());
+                    AuthPacket authPacket = new AuthPacket(session.getSessionId(), configuration.getHandshakeParameter(), configuration);
                     Packet packet = new Packet(PacketType.HANDSHAKE);
                     packet.setData(authPacket);
                     session.send(packet);

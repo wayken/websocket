@@ -17,27 +17,17 @@ import java.util.Map;
 public class WSConfig {
     public static final String IO_MODE_NETTY = "netty";
 
-    /**
-     * 扫描基础包，必须配置，框架会自动扫描ServerEndpoint注解类
-     */
+    // 扫描基础包，必须配置，框架会自动扫描ServerEndpoint注解类
     protected String basePackage;
 
-    /**
-     * 底层网格模型，默认是采用NETTY
-     */
+    // 底层网格模型，默认是采用NETTY
     protected String ioMode = IO_MODE_NETTY;
 
-    /**
-     * 绑定服务器地址
-     */
+    // 绑定服务器地址
     private String host = "0.0.0.0";
-    /**
-     * 绑定服务器端口
-     */
+    // 绑定服务器端口
     private int port = -1;
-    /**
-     * 绑定的主机列表
-     */
+    // 绑定的主机列表
     private InetSocketAddress bindSocketAddress;
 
     private int backlog = 1024;
@@ -58,29 +48,19 @@ public class WSConfig {
      */
     private int numOfGroup = Runtime.getRuntime().availableProcessors() + 1;
 
-    /**
-     * 是否开启HTTP压缩
-     */
+    // 是否开启HTTP压缩
     private boolean httpCompression = true;
 
-    /**
-     * 是否开启线程池
-     */
+    // 是否开启线程池
     private boolean executorOn = false;
 
-    /**
-     * 工作线程池数量
-     */
+    // 工作线程池数量
     private int workerCount = Runtime.getRuntime().availableProcessors() << 1;
 
-    /**
-     * 是否输出系统信息
-     */
+    // 是否输出系统信息
     protected boolean showSysInfo = true;
 
-    /**
-     * 自定义JSON解析器
-     */
+    // 自定义JSON解析器
     private JsonSupport jsonSupport;
 
     /**
@@ -98,59 +78,57 @@ public class WSConfig {
 
     private boolean websocketCompression = true;
 
-    /**
-     * Maximum http content length limit
-     */
+    // Maximum http content length limit
     private int maxHttpContentLength = 2 * 1024 * 1024;
 
-    /**
-     * Maximum websocket frame content length limit
-     */
+    // Maximum websocket frame content length limit
     private int maxFramePayloadLength = 2 * 1024 * 1024;
 
-    /**
-     * 服务是否为只读
-     */
+    // 和分布式服务协商续约时间，默认为60000毫秒，续约成功后分布式服务会将服务注册信息的过期时间延长续约时间
+    private int renewalInterval = 60000;
+
+    // 服务是否为只读
     private boolean readonly;
 
-    /**
-     * 是否为调式模式
-     */
+    // 是否为调式模式
     private boolean debug;
 
-    /**
-     * 服务编码
-     */
+    // 服务编码
     private String charset = "utf-8";
 
-    /**
-     * 发送数据缓存默认分配内存大小
-     */
+    // 发送数据缓存默认分配内存大小
     private int bufferSize = 2 * 1024;
-    /**
-     * 是否直接使用堆内存
-     */
+    // 是否直接使用堆内存
     private boolean bufferDirect = false;
 
-    /**
-     * 是否保持服务器端长连接，不检查网络超时
-     */
+    // 是否保持服务器端长连接，不检查网络超时
     private boolean keepAlive = false;
 
-    /**
-     * SSL证书相关配置
-     */
+    // 分布式部署类型，默认为内存分布式，支持memory/redission/hazelcast等
+    private String distributedType = WebSocketConstants.DISTRIBUTED_SERVICE_MEMORY;
+    // 分布式服务名称，分布式部署时必须配置，框架会根据此名称进行服务注册和发现，做到不同业务实例可以部署在同一分布式环境中而互不干扰
+    // 注意：分布式服务名称必须唯一，不能和其他业务实例的分布式服务名称重复，但同一业务实例部署在多台服务器中必须使用相同的分布式服务名称才能做成一个集群
+    private String distributedServiceName = "websocket";
+    // 分布式服务注册地址
+    private String distributedServerAddress = "127.0.0.1:3679";
+
+    // SSL证书相关配置
     private String sslProtocol = "TLSv1";
-
     private boolean needClientAuth = false;
-
     private String keyStoreFormat = "JKS";
     private InputStream keyStore;
     private String keyStorePassword;
-
     private String trustStoreFormat = "JKS";
     private InputStream trustStore;
     private String trustStorePassword;
+
+    // 客户端重试策略相关配置
+    // 是否开启客户端重连策略，开启后当客户端连接断开时会自动尝试重连，提升客户端的稳定性和用户体验
+    private boolean socketReconnectOn = true;
+    // 最大重试次数，-1表示不限制重试次数
+    private int socketMaxReconnectAttempts = 5;
+    // 重试间隔时间，单位毫秒
+    private int socketReconnectInterval = 3000;
 
     /**
      * 数据源相关配置，支持多数据源配置，适用场景：
@@ -159,14 +137,11 @@ public class WSConfig {
      */
     protected Map<String, ResourceConfig> resources;
 
-    /**
-     * 自定义业务握手传输数据
-     */
-    private final Map<String, String> handshakeParameter = new HashMap<String, String>(1);
+    // 自定义业务握手传输数据
+    // 业务可通过此参数在握手阶段传输一些自定义数据到客户端，比如一些认证信息等，客户端在握手阶段可以获取到这些数据进行处理，提升业务的灵活性和扩展性
+    private final Map<String, String> handshakeParameter = new HashMap<>(1);
 
-    /**
-     * 日志输出终端
-     */
+    // 日志输出终端
     private String logAppender = Appender.CONSOLE;
 
     /**
@@ -181,19 +156,13 @@ public class WSConfig {
      */
     private String logLevel = "INFO";
 
-    /**
-     * 日志的存储路径
-     */
+    // 日志的存储路径
     private String logPath = "log";
 
-    /**
-     * 日志输出模板
-     */
+    // 日志输出模板
     private String logFormat = Logger.DEFAULT_LOG_FORMAT;
 
-    /**
-     * 业务自定义配置
-     */
+    // 业务自定义配置
     protected Object options;
 
     public String getBasePackage() {
@@ -348,6 +317,14 @@ public class WSConfig {
         this.maxFramePayloadLength = maxFramePayloadLength;
     }
 
+    public int getRenewalInterval() {
+        return renewalInterval;
+    }
+
+    public void setRenewalInterval(int renewalInterval) {
+        this.renewalInterval = renewalInterval;
+    }
+
     public boolean isReadonly() {
         return readonly;
     }
@@ -394,6 +371,30 @@ public class WSConfig {
 
     public void setKeepAlive(boolean keepAlive) {
         this.keepAlive = keepAlive;
+    }
+
+    public String getDistributedType() {
+        return distributedType;
+    }
+
+    public void setDistributedType(String distributedType) {
+        this.distributedType = distributedType;
+    }
+
+    public String getDistributedServiceName() {
+        return distributedServiceName;
+    }
+
+    public void setDistributedServiceName(String distributedServiceName) {
+        this.distributedServiceName = distributedServiceName;
+    }
+
+    public String getDistributedServerAddress() {
+        return distributedServerAddress;
+    }
+
+    public void setDistributedServerAddress(String distributedServerAddress) {
+        this.distributedServerAddress = distributedServerAddress;
     }
 
     public String getSslProtocol() {
@@ -460,6 +461,30 @@ public class WSConfig {
         this.trustStorePassword = trustStorePassword;
     }
 
+    public boolean isSocketReconnectOn() {
+        return socketReconnectOn;
+    }
+
+    public void setSocketReconnectOn(boolean socketReconnectOn) {
+        this.socketReconnectOn = socketReconnectOn;
+    }
+
+    public int getSocketMaxReconnectAttempts() {
+        return socketMaxReconnectAttempts;
+    }
+
+    public void setSocketMaxReconnectAttempts(int socketMaxReconnectAttempts) {
+        this.socketMaxReconnectAttempts = socketMaxReconnectAttempts;
+    }
+
+    public int getSocketReconnectInterval() {
+        return socketReconnectInterval;
+    }
+
+    public void setSocketReconnectInterval(int socketReconnectInterval) {
+        this.socketReconnectInterval = socketReconnectInterval;
+    }
+
     public Map<String, String> getHandshakeParameter() {
         return handshakeParameter;
     }
@@ -513,8 +538,8 @@ public class WSConfig {
             return null;
         }
 
-        for (String resouce : resources.keySet()) {
-            return resources.get(resouce);
+        for (String resource : resources.keySet()) {
+            return resources.get(resource);
         }
         return null;
     }
@@ -574,30 +599,20 @@ public class WSConfig {
 
     @Value("cachex")
     public static class ResourceConfig {
-        /**
-         * 数据库方言，默认为MYSQL
-         */
+        // 数据库方言，默认为MYSQL
         private String dialect;
 
-        /**
-         * 缓存类型，默认为JVM内存
-         */
+        // 缓存类型，默认为JVM内存
         private String cache;
 
-        /**
-         * 数据源相关配置
-         */
+        // 数据源相关配置
         protected DbPoolConfig dbPoolConfig;
 
-        /**
-         * JVM缓存相关配置
-         */
+        // JVM缓存相关配置
         @Value("jvm")
         private JvmConfig jvmConfig = new JvmConfig();
 
-        /**
-         * Redis缓存相关配置
-         */
+        // Redis缓存相关配置
         @Value("redis")
         private RedisConfig redisConfig = new RedisConfig();
 
@@ -644,29 +659,19 @@ public class WSConfig {
 
     @Value("dbpool")
     public static class DbPoolConfig {
-        /**
-         * 数据库URL连接
-         */
+        // 数据库URL连接
         private String jdbcUrl;
 
-        /**
-         * 数据库用户名
-         */
+        // 数据库用户名
         private String username;
 
-        /**
-         * 数据库密码
-         */
+        // 数据库密码
         private String password;
 
-        /**
-         * 连接池最小Connection连接数
-         */
+        // 连接池最小Connection连接数
         private int minConnections = 12;
 
-        /**
-         * 连接池最大Connection连接数，包括空闲和忙碌的Connection连接数
-         */
+        // 连接池最大Connection连接数，包括空闲和忙碌的Connection连接数
         private int maxConnections = Byte.MAX_VALUE;
 
         public String getJdbcUrl() {

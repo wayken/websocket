@@ -1,7 +1,7 @@
 package cloud.apposs.websocket.scheduler;
 
 public class SchedulerKey {
-    public enum Type {PING, PING_TIMEOUT};
+    public enum Type { PING, PING_TIMEOUT, RENEWAL };
 
     private final Type type;
     private final Object sessionId;

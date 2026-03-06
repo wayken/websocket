@@ -2,6 +2,7 @@ package cloud.apposs.websocket.namespace;
 
 import cloud.apposs.logger.Logger;
 import cloud.apposs.websocket.WSConfig;
+import cloud.apposs.websocket.distributed.IDistributedService;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,10 +14,14 @@ import java.util.concurrent.ConcurrentMap;
 public final class NamespacesHub {
     private final WSConfig configuration;
 
-    private final ConcurrentMap<String, Namespace> namespaces = new ConcurrentHashMap<String, Namespace>();
+    private final ConcurrentMap<String, Namespace> namespaces = new ConcurrentHashMap<>();
 
-    public NamespacesHub(WSConfig configuration) {
+    private final IDistributedService distributedService;
+
+    public NamespacesHub(WSConfig configuration, IDistributedService distributedService) {
         this.configuration = configuration;
+        this.distributedService = distributedService;
+        distributedService.initialize(configuration, this);
     }
 
     /**
@@ -27,7 +32,7 @@ public final class NamespacesHub {
     public Namespace create(String name) {
         Namespace namespace = namespaces.get(name);
         if (namespace == null) {
-            namespace = new Namespace(name, configuration);
+            namespace = new Namespace(name, configuration, distributedService);
             Namespace oldNamespace = namespaces.putIfAbsent(name, namespace);
             if (oldNamespace != null) {
                 namespace = oldNamespace;

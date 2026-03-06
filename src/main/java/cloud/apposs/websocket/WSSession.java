@@ -1,16 +1,23 @@
 package cloud.apposs.websocket;
 
 import cloud.apposs.websocket.broadcast.BroadcastOperations;
+import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.namespace.Namespace;
+import cloud.apposs.websocket.netty.WebSocketContextHolder;
 import cloud.apposs.websocket.protocol.HandshakeData;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.protocol.PacketEncoder;
 import cloud.apposs.websocket.protocol.PacketType;
+import cloud.apposs.websocket.scheduler.SchedulerKey;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class WSSession {
@@ -33,14 +40,27 @@ public abstract class WSSession {
     // 会话握手数据
     protected final HandshakeData handshakeData;
 
-    public WSSession(UUID sessionId, String path, WSConfig configuration, Namespace namespace,
-                     WSSessionBox sessionBox, HandshakeData handshakeData) {
+    private final WebSocketContextHolder contextHolder;
+
+    // 当前会话请求存储的一些状态值
+    private final Map<Object, Object> attributes = new ConcurrentHashMap<>(1);
+
+    public WSSession(
+            UUID sessionId,
+            String path,
+            WSConfig configuration,
+            Namespace namespace,
+            WSSessionBox sessionBox,
+            HandshakeData handshakeData,
+            WebSocketContextHolder contextHolder
+    ) {
         this.sessionId = sessionId;
         this.path = path;
         this.configuration = configuration;
         this.namespace = namespace;
         this.sessionBox = sessionBox;
         this.handshakeData = handshakeData;
+        this.contextHolder = contextHolder;
         namespace.addSession(this);
     }
 
@@ -51,9 +71,7 @@ public abstract class WSSession {
     public String getPath() {
         return path;
     }
-    /**
-     * 判断会话是否已经连接
-     */
+
     public boolean isConnected() {
         return !disconnected.get();
     }
@@ -74,86 +92,55 @@ public abstract class WSSession {
         return handshakeData.getLocalAddress();
     }
 
-    /**
-     * 获取指定房间内的所有客户端连接数量
-     *
-     * @param  room 房间名
-     * @return 房间内的所有客户端连接数量
-     */
-    public int getCurrentRoomSize(String room) {
-        return namespace.getRoomClientsInCluster(room);
+    public Object getAttribute(Object key) {
+        return getAttribute(key, null);
     }
 
     /**
-     * 获取当前客户端加入的所有房间
+     * 获取指定会话请求存储的状态值
      *
-     * @return 房间名集合
+     * @param  key        状态键
+     * @param  defaultVal 默认值
+     * @return 状态值
      */
-    public Set<String> getAllRooms() {
-        return namespace.getRooms(this);
+    public Object getAttribute(Object key, Object defaultVal) {
+        Object attr = attributes.get(key);
+        if (attr == null && defaultVal != null) {
+            attr = defaultVal;
+            attributes.put(key, attr);
+        }
+        return attr;
     }
 
     /**
-     * 当前客户端加入指定房间
+     * 设置指定会话请求存储的状态值
      *
-     * @param room 房间名
+     * @param  key   状态键
+     * @param  value 状态值
+     * @return 之前的状态值
      */
-    public void joinRoom(String room) {
-        namespace.joinRoom(room, getSessionId());
+    public Object setAttribute(Object key, Object value) {
+        return attributes.put(key, value);
     }
 
     /**
-     * 当前客户端加入指定房间
+     * 判断指定会话请求存储的状态值是否存在
      *
-     * @param rooms 房间名
+     * @param  key 状态键
+     * @return 状态值是否存在
      */
-    public void joinRooms(Set<String> rooms) {
-        namespace.joinRooms(rooms, getSessionId());
+    public boolean hasAttribute(Object key) {
+        return attributes.containsKey(key);
     }
 
     /**
-     * 当前客户端离开指定房间
+     * 删除指定会话请求存储的状态值
      *
-     * @param room 房间名
+     * @param  key 状态键
+     * @return 被移除的状态值
      */
-    public void leaveRoom(String room) {
-        namespace.leaveRoom(room, getSessionId());
-    }
-
-    /**
-     * 当前客户端离开指定房间
-     *
-     * @param rooms 房间名
-     */
-    public void leaveRooms(Set<String> rooms) {
-        namespace.leaveRooms(rooms, getSessionId());
-    }
-
-    /**
-     * 获取当前命名空间下所有默认房间内的客户端连接进行后续广播操作
-     */
-    public BroadcastOperations getBroadcastOperations() {
-        return namespace.getBroadcastOperations();
-    }
-
-    /**
-     * 根据指定房间名获取房间内的所有客户端连接
-     *
-     * @param  room 房间名
-     * @return 房间内的所有客户端连接
-     */
-    public BroadcastOperations getRoomOperations(String room) {
-        return namespace.getRoomOperations(room);
-    }
-
-    /**
-     * 根据指定房间名获取房间内的所有客户端连接
-     *
-     * @param  rooms 房间名
-     * @return 房间内的所有客户端连接
-     */
-    public BroadcastOperations getRoomOperations(String... rooms) {
-        return namespace.getRoomOperations(rooms);
+    public Object removeAttribute(Object key) {
+        return attributes.remove(key);
     }
 
     /**
@@ -176,11 +163,122 @@ public abstract class WSSession {
      * @param  packet 消息数据包
      * @return 异步操作句柄
      */
-    public void send(Packet packet) throws Exception {
+    public boolean send(Packet packet) throws Exception {
         if (disconnected.get()) {
             throw new IOException("session is disconnected");
         }
-        handlePacketSend(PacketEncoder.encode(packet, configuration.getJsonSupport()));
+        return handlePacketSend(PacketEncoder.encode(packet, configuration.getJsonSupport()));
+    }
+
+    /**
+     * 获取分布式环境下指定会话ID的客户端连接
+     *
+     * @param  sessionId 客户端连接ID
+     * @return 客户端连接对象，如果当前实例没有该连接，则返回null
+     */
+    public BroadcastOperations getDistributedSessionOperations(UUID sessionId) {
+        return namespace.getSessionOperations(sessionId);
+    }
+
+    /**
+     * 获取分布式环境下指定会话ID集合的客户端连接
+     *
+     * @param  sessionIds 客户端连接ID集合
+     * @return 客户端连接对象集合
+     */
+    public BroadcastOperations getDistributedSessionOperations(Collection<UUID> sessionIds) {
+        return namespace.getMultiSessionOperations(sessionIds);
+    }
+
+    /**
+     * 获取当前命名空间下所有默认房间内的客户端连接进行后续广播操作
+     */
+    public BroadcastOperations getDistributedRoomOperations() {
+        return namespace.getBroadcastOperations();
+    }
+
+    /**
+     * 根据指定房间名获取房间内的所有客户端连接
+     *
+     * @param  room 房间名
+     * @return 房间内的所有客户端连接
+     */
+    public BroadcastOperations getDistributedRoomOperations(String room) {
+        return namespace.getRoomOperations(room);
+    }
+
+    /**
+     * 根据指定房间名获取房间内的所有客户端连接
+     *
+     * @param  rooms 房间名
+     * @return 房间内的所有客户端连接
+     */
+    public BroadcastOperations getDistributedRoomOperations(Collection<String> rooms) {
+        return namespace.getRoomOperations(rooms);
+    }
+
+    /**
+     * 获取当前客户端加入的所有房间
+     *
+     * @return 房间名集合
+     */
+    public Set<String> getAllRooms() {
+        return namespace.getSessionDistributedRooms(sessionId);
+    }
+
+    /**
+     * 当前客户端加入指定房间
+     *
+     * @param room 房间名
+     */
+    public void joinRoom(String room) {
+        namespace.joinRoom(room, sessionId);
+    }
+
+    /**
+     * 当前客户端加入指定房间
+     *
+     * @param rooms 房间名
+     */
+    public void joinRooms(Set<String> rooms) {
+        namespace.joinRooms(rooms, sessionId);
+    }
+
+    /**
+     * 当前客户端离开指定房间
+     *
+     * @param room 房间名
+     */
+    public void leaveRoom(String room) {
+        namespace.leaveRoom(room, sessionId);
+    }
+
+    /**
+     * 当前客户端离开指定房间
+     *
+     * @param rooms 房间名
+     */
+    public void leaveRooms(Set<String> rooms) {
+        namespace.leaveRooms(rooms, sessionId);
+    }
+
+    public void scheduleRenewal() {
+        cancelRenewal();
+        // 创建新的分布式服务注册续期检测任务
+        SchedulerKey key = new SchedulerKey(SchedulerKey.Type.RENEWAL, sessionId);
+        contextHolder.getScheduler().schedule(key, () -> {
+            WSSession session = sessionBox.getSession(sessionId);
+            if (session != null && session.isChannelOpen()) {
+                IPubSubService pubSubService = namespace.getPubSubService();
+                pubSubService.registerSession(namespace.getName(), sessionId);
+                scheduleRenewal();
+            }
+        }, configuration.getRenewalInterval(), TimeUnit.MILLISECONDS);
+    }
+
+    public void cancelRenewal() {
+        SchedulerKey key = new SchedulerKey(SchedulerKey.Type.RENEWAL, sessionId);
+        contextHolder.getScheduler().cancel(key);
     }
 
     /**
@@ -197,12 +295,15 @@ public abstract class WSSession {
     }
 
     public void onChannelDisconnect() {
+        cancelRenewal();
         disconnected.set(true);
         sessionBox.removeSession(sessionId);
         namespace.onDisconnect(this);
     }
 
+    public abstract boolean isChannelOpen();
+
     public abstract void handleChannelDisconnect() throws Exception;
 
-    public abstract void handlePacketSend(byte[] packet) throws Exception;
+    public abstract boolean handlePacketSend(byte[] packet) throws Exception;
 }

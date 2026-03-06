@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 public class HashedWheelTimeoutScheduler implements CancelableScheduler {
     private final HashedWheelTimer executorService;
-    private final ConcurrentMap<SchedulerKey, Timeout> scheduledFutures = new ConcurrentHashMap<SchedulerKey, Timeout>();
+    private final ConcurrentMap<SchedulerKey, Timeout> scheduledFutures = new ConcurrentHashMap<>();
 
     public HashedWheelTimeoutScheduler() {
         executorService = new HashedWheelTimer();

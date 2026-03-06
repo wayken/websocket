@@ -2,8 +2,6 @@ package cloud.apposs.websocket.netty;
 
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSessionBox;
-import cloud.apposs.websocket.scheduler.CancelableScheduler;
-import cloud.apposs.websocket.scheduler.HashedWheelTimeoutScheduler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -39,8 +37,6 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
 
     private SSLContext sslContext;
 
-    private CancelableScheduler scheduler = new HashedWheelTimeoutScheduler();
-
     private final WebSocketContextHolder contextHolder;
 
     private final WSSessionBox sessionBox;
@@ -61,7 +57,7 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
             }
         }
 
-        this.authorizeHandler = new AuthorizeHandler(configuration, scheduler, contextHolder, sessionBox);
+        this.authorizeHandler = new AuthorizeHandler(configuration, contextHolder, sessionBox);
         this.webSocketHandler = new WebSocketHandler(configuration, contextHolder);
         this.packetEncodeHandler = new PacketEncodeHandler();
         return this;

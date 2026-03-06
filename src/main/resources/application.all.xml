@@ -9,4 +9,7 @@
     <property name="host">0.0.0.0</property>
     <property name="port">7012</property>
     <property name="keepAlive">true</property>
+    <!-- 分布式部署配置相关 -->
+    <property name="distributedType">redission</property>
+    <property name="distributedServerAddress">192.168.5.57:6030</property>
 </bootor-config>

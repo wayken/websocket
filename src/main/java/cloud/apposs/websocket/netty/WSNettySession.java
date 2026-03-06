@@ -19,15 +19,28 @@ import java.util.UUID;
 public class WSNettySession extends WSSession  {
     private final ChannelHandlerContext context;
 
-    public WSNettySession(UUID sessionId, String path, WSConfig configuration, Namespace namespace,
-                          WSSessionBox sessionBox, HandshakeData handshakeData, ChannelHandlerContext context) {
-        super(sessionId, path, configuration, namespace, sessionBox, handshakeData);
+    public WSNettySession(
+            UUID sessionId,
+            String path,
+            WSConfig configuration,
+            Namespace namespace,
+            WSSessionBox sessionBox,
+            HandshakeData handshakeData,
+            ChannelHandlerContext context,
+            WebSocketContextHolder contextHolder
+    ) {
+        super(sessionId, path, configuration, namespace, sessionBox, handshakeData, contextHolder);
         this.context = context;
     }
 
     @Override
-    public void handlePacketSend(byte[] packet) {
-        context.channel().writeAndFlush(packet);
+    public boolean isChannelOpen() {
+        return context.channel().isActive();
+    }
+
+    @Override
+    public boolean handlePacketSend(byte[] packet) {
+        return context.channel().writeAndFlush(packet) != null;
     }
 
     @Override

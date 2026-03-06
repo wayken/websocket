@@ -9,10 +9,10 @@ import java.util.List;
 import java.util.Properties;
 
 public abstract class ApplicationContext {
-    /** 全局配置 */
+    // 全局配置
     private WSConfig config;
 
-    /** 服务启动开始时间 */
+    // 服务启动开始时间
     protected long appStartTime;
 
     public ApplicationContext() {
@@ -51,6 +51,9 @@ public abstract class ApplicationContext {
 
         // 开始启动WebSocket服务
         handleStartWebSocketServer(config);
+
+        // 注册服务被kill时的回调
+        handleShutdownHookRegister();
     }
 
     /**
@@ -82,6 +85,18 @@ public abstract class ApplicationContext {
                 Logger.info("Jvm Argument: [%s]", argument);
             }
         }
+    }
+
+    /**
+     * 注册服务被kill时的回调，只能捕获kill -15的信号量 kill -9 没办法
+     */
+    private void handleShutdownHookRegister() {
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                shutdown();
+            }
+        });
     }
 
     public void shutdown() {

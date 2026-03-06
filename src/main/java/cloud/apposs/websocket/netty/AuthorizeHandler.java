@@ -7,7 +7,6 @@ import cloud.apposs.websocket.WSSessionBox;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.protocol.HandshakeData;
-import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import cloud.apposs.websocket.scheduler.SchedulerKey;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
@@ -29,16 +28,12 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     private final WSConfig configuration;
 
-    private final CancelableScheduler scheduler;
-
     private final WebSocketContextHolder contextHolder;
 
     private final WSSessionBox sessionBox;
 
-    public AuthorizeHandler(WSConfig configuration, CancelableScheduler scheduler,
-                            WebSocketContextHolder contextHolder, WSSessionBox sessionBox) {
+    public AuthorizeHandler(WSConfig configuration, WebSocketContextHolder contextHolder, WSSessionBox sessionBox) {
         this.configuration = configuration;
-        this.scheduler = scheduler;
         this.contextHolder = contextHolder;
         this.sessionBox = sessionBox;
     }
@@ -47,7 +42,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(final ChannelHandlerContext context) throws Exception {
         // 定期检测客户端有没有进行WebSocket握手通讯，避免恶意空连接
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.PING_TIMEOUT, context.channel());
-        scheduler.schedule(key, () -> {
+        contextHolder.getScheduler().schedule(key, () -> {
             context.channel().close();
             if (Logger.isDebugEnabled()) {
                 Logger.debug("Client with ip %s opened channel but doesn't send any data! Channel closed!",
@@ -60,7 +55,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext context, Object message) throws Exception {
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.PING_TIMEOUT, context.channel());
-        scheduler.cancel(key);
+        contextHolder.getScheduler().cancel(key);
 
         if (message instanceof FullHttpRequest) {
             FullHttpRequest request = (FullHttpRequest) message;
@@ -89,7 +84,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     }
 
     private boolean authorize(ChannelHandlerContext context, QueryStringDecoder decoder, String path, FullHttpRequest request) throws Exception {
-        Map<String, List<String>> headers = new HashMap<String, List<String>>(request.headers().names().size());
+        Map<String, List<String>> headers = new HashMap<>(request.headers().names().size());
         Map<String, List<String>> parameters = decoder.parameters();
         for (String name : request.headers().names()) {
             List<String> values = request.headers().getAll(name);
@@ -98,7 +93,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
 
         Channel channel = context.channel();
         // 调用业务认证接口进行WebSocket拦截认证，因为Parameters是一个List，所以只取最后一个参数值
-        Map<String, String> formatParameters = new HashMap<String, String>();
+        Map<String, String> formatParameters = new HashMap<>();
         for (Map.Entry<String, List<String>> entry : parameters.entrySet()) {
             String key = entry.getKey();
             List<String> values = entry.getValue();
@@ -113,17 +108,18 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
         CommandarInterceptorSupport interceptorSupport = contextHolder.getCommandarInterceptorSupport();
         boolean isAuthSuccess = interceptorSupport.isAuthorized(handshakeData);
         if (!isAuthSuccess) {
-            HttpResponse res = new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.UNAUTHORIZED);
-            channel.writeAndFlush(res).addListener(ChannelFutureListener.CLOSE);
+            HttpResponse response = new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.UNAUTHORIZED);
+            channel.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
             Logger.warn("Handshake unauthorized, query params: %s headers: %s", parameters, headers);
             return false;
         }
         // 创建会话信息
         UUID sessionId = UUID.randomUUID();
         Namespace namespace = contextHolder.getNamespacesHub().get(path);
-        WSSession session = new WSNettySession(sessionId, path, configuration,
-                namespace, sessionBox, handshakeData, context);
+        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, sessionBox, handshakeData, context, contextHolder);
         channel.attr(ChannelAttributeKey.SESSION).set(session);
+        sessionBox.addSession(session);
+        session.scheduleRenewal();
         return true;
     }
 }

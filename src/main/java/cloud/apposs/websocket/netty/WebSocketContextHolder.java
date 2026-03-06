@@ -9,9 +9,13 @@ import cloud.apposs.websocket.commandar.Commandar;
 import cloud.apposs.websocket.commandar.CommandarInvocation;
 import cloud.apposs.websocket.commandar.CommandarRouter;
 import cloud.apposs.websocket.commandar.ParameterResolver;
+import cloud.apposs.websocket.distributed.IDistributedService;
+import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
+import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.Packet;
+import cloud.apposs.websocket.scheduler.CancelableScheduler;
 
 import java.util.List;
 
@@ -21,15 +25,27 @@ import java.util.List;
 public final class WebSocketContextHolder {
     private final NamespacesHub namespacesHub;
 
+    private final CancelableScheduler scheduler;
+
+    private final IDistributedService distributedService;
+
     private final CommandarRouter commandarRouter;
 
     private final CommandarInvocation commandarInvocation;
 
     private final CommandarInterceptorSupport commandarInterceptorSupport;
 
-    public WebSocketContextHolder(NamespacesHub namespacesHub, CommandarRouter commandarRouter,
-                                  CommandarInvocation commandarInvocation, CommandarInterceptorSupport commandarInterceptorSupport) {
+    public WebSocketContextHolder(
+            NamespacesHub namespacesHub,
+            CancelableScheduler scheduler,
+            IDistributedService distributedService,
+            CommandarRouter commandarRouter,
+            CommandarInvocation commandarInvocation,
+            CommandarInterceptorSupport commandarInterceptorSupport
+    ) {
         this.namespacesHub = namespacesHub;
+        this.scheduler = scheduler;
+        this.distributedService = distributedService;
         this.commandarRouter = commandarRouter;
         this.commandarInvocation = commandarInvocation;
         this.commandarInterceptorSupport = commandarInterceptorSupport;
@@ -37,6 +53,10 @@ public final class WebSocketContextHolder {
 
     public NamespacesHub getNamespacesHub() {
         return namespacesHub;
+    }
+
+    public CancelableScheduler getScheduler() {
+        return scheduler;
     }
 
     public CommandarInterceptorSupport getCommandarInterceptorSupport() {
@@ -52,6 +72,10 @@ public final class WebSocketContextHolder {
     }
 
     public void onConnect(WSSession session) throws Exception {
+        // 注册当前客户端信息到分布式注册中心
+        IPubSubService pubsubService = distributedService.getPubSubService();
+        Namespace namespace = namespacesHub.get(session.getPath());
+        pubsubService.registerSession(namespace.getName(), session.getSessionId());
         // 获取注解接口的 OnConnect 方法并执行连接成功回调
         List<Commandar> onConnectCommandList = commandarRouter.getCommandar(session.getPath(), OnConnect.class.getSimpleName());
         if (onConnectCommandList != null) {
@@ -85,6 +109,10 @@ public final class WebSocketContextHolder {
     }
 
     public void onDisconnect(WSSession session) throws Exception {
+        // 从分布式注册中心注销客户端
+        IPubSubService pubsubService = distributedService.getPubSubService();
+        pubsubService.unregisterSession(session.getNamespace().getName(), session.getSessionId());
+        // 获取注解接口的 OnDisconnect 方法并执行断开连接回调
         List<Commandar> onDisconnectCommandList = commandarRouter.getCommandar(session.getPath(), OnDisconnect.class.getSimpleName());
         if (onDisconnectCommandList != null) {
             for (Commandar commandar : onDisconnectCommandList) {

@@ -15,7 +15,7 @@ public class JacksonJsonSupport implements JsonSupport {
     protected final ObjectMapper objectMapper;
 
     public JacksonJsonSupport() {
-        this.eventMapping = new HashMap<Short, Class<?>>();
+        this.eventMapping = new HashMap<>();
         this.objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
