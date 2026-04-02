@@ -16,10 +16,18 @@ public interface BroadcastOperations {
     /**
      * 发送消息包给所有连接的客户端
      *
-     * @param event 事件名称
-     * @param data  事件数据
+     * @param command 事件名称
+     * @param data    事件数据
      */
-    boolean sendEvent(short event, Object ... data) throws Exception;
+    boolean sendCommand(String command, Object ... data) throws Exception;
+
+    /**
+     * 发送消息响应包，主要应用于 WEBSOCKET RPC 请求-响应通讯场景
+     *
+     * @param id        指令ID
+     * @param parameter 数据包，可由业务自定义JSON对象格式
+     */
+    void sendResponse(String id, Object... parameter) throws Exception;
 
     /**
      * 断开所有连接的客户端

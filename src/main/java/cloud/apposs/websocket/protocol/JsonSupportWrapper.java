@@ -1,6 +1,8 @@
 package cloud.apposs.websocket.protocol;
 
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 
 public class JsonSupportWrapper implements JsonSupport {
     private final JsonSupport delegate;
@@ -10,17 +12,22 @@ public class JsonSupportWrapper implements JsonSupport {
     }
 
     @Override
-    public void addEventMapping(String namespace, String command, Class<?> commandClass) {
-        delegate.addEventMapping(namespace, command, commandClass);
+    public void addCommandMapping(String namespace, String command, List<Class<?>> commandClass) {
+        delegate.addCommandMapping(namespace, command, commandClass);
     }
 
     @Override
-    public Object readValue(String namespace, byte[] content, short event) throws Exception {
-        return delegate.readValue(namespace, content, event);
+    public <T> T readValue(Packet packet, InputStream content, Class<T> valueType) throws Exception {
+        return delegate.readValue(packet, content, valueType);
     }
 
     @Override
-    public void writeValue(OutputStream out, Object value) throws Exception {
-        delegate.writeValue(out, value);
+    public void writeValue(OutputStream content, Object value) throws Exception {
+        delegate.writeValue(content, value);
+    }
+
+    @Override
+    public List<byte[]> getBuffers() {
+        return delegate.getBuffers();
     }
 }

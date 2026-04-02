@@ -3,6 +3,7 @@ package cloud.apposs.websocket.netty;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.WSSessionBox;
+import cloud.apposs.websocket.WebSocketContextHolder;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.protocol.HandshakeData;
 import cloud.apposs.websocket.protocol.Packet;

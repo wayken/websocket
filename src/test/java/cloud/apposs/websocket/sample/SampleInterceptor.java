@@ -6,6 +6,8 @@ import cloud.apposs.websocket.commandar.Commandar;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorAdapter;
 import cloud.apposs.websocket.protocol.HandshakeData;
 
+import java.util.List;
+
 @Component
 public class SampleInterceptor extends CommandarInterceptorAdapter {
     @Override
@@ -15,8 +17,8 @@ public class SampleInterceptor extends CommandarInterceptorAdapter {
     }
 
     @Override
-    public boolean onEvent(Commandar commandar, WSSession session, Object argument) {
-        System.out.println("SampleInterceptor onEvent " + commandar.getPath());
+    public boolean onCommand(Commandar commandar, WSSession session, List<Object> argument) {
+        System.out.println("SampleInterceptor onCommand " + commandar.getPath());
         return true;
     }
 }

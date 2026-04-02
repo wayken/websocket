@@ -57,10 +57,10 @@ public class CommandarInterceptorSupport {
      * @param argument  指令参数
      * @return true/false 通过拦截验证验证返回true
      */
-    public boolean onEvent(Commandar commandar, WSSession session, Object argument) {
+    public boolean onCommand(Commandar commandar, WSSession session, List<Object> argument) {
         for (int i = interceptorList.size() - 1; i >= 0; i--) {
             CommandarInterceptor interceptor = interceptorList.get(i);
-            boolean isPass = interceptor.onEvent(commandar, session, argument);
+            boolean isPass = interceptor.onCommand(commandar, session, argument);
             if (!isPass) {
                 return false;
             }

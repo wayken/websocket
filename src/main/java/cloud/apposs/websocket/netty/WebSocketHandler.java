@@ -4,6 +4,7 @@ import cloud.apposs.logger.Logger;
 import cloud.apposs.util.Pair;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
+import cloud.apposs.websocket.WebSocketContextHolder;
 import cloud.apposs.websocket.protocol.AuthPacket;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.protocol.PacketDecoder;
@@ -55,7 +56,7 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
                     WSSession session = context.channel().attr(ChannelAttributeKey.SESSION).get();
                     AuthPacket authPacket = new AuthPacket(session.getSessionId(), configuration.getHandshakeParameter(), configuration);
                     Packet packet = new Packet(PacketType.HANDSHAKE);
-                    packet.setData(authPacket);
+                    packet.getParameter().setArguments(authPacket);
                     session.send(packet);
                     // 触发OnConnect事件
                     onConnect(context);
@@ -151,9 +152,8 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
             context.channel().attr(ChannelAttributeKey.DECODER).set(decoder);
         }
         ByteBuf buffer = frame.content();
-        byte[] content = new byte[buffer.readableBytes()];
-        buffer.readBytes(content);
-        Pair<Boolean, Packet> packets = decoder.decode(session, content);
+        // buffer转换成ByteBuffer
+        Pair<Boolean, Packet> packets = decoder.decode(session, buffer.nioBuffer());
         if (packets == null) {
             throw new IOException("Decode packet error from client " + session.getSessionId());
         }
@@ -162,9 +162,9 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
         if (!isPacketComplete) {
             return;
         }
-        // 获取注解接口的 OnEvent 方法并执行方法回调
+        // 获取注解接口的 OnCommand 方法并执行方法回调
         Packet packet = packets.value();
-        contextHolder.onEvent(session, packet);
+        contextHolder.onCommand(session, packet);
     }
 
     public void onDisConnect(ChannelHandlerContext context) throws Exception {

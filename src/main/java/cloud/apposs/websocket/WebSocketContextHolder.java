@@ -1,7 +1,6 @@
-package cloud.apposs.websocket.netty;
+package cloud.apposs.websocket;
 
 import cloud.apposs.logger.Logger;
-import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.annotation.OnConnect;
 import cloud.apposs.websocket.annotation.OnDisconnect;
 import cloud.apposs.websocket.annotation.OnError;
@@ -85,20 +84,20 @@ public final class WebSocketContextHolder {
         }
     }
 
-    public void onEvent(WSSession session, Packet packet) throws Exception {
-        List<Commandar> onEventCommandList = commandarRouter.getCommandar(session.getPath(), packet.getCommand());
-        if (onEventCommandList == null) {
+    public void onCommand(WSSession session, Packet packet) throws Exception {
+        List<Commandar> onCommandList = commandarRouter.getCommandar(session.getPath(), packet.getCommand());
+        if (onCommandList == null) {
             return;
         }
-        for (Commandar commandar : onEventCommandList) {
+        for (Commandar commandar : onCommandList) {
             // 进行消息事件拦截器拦截，如果返回false则不再进行后续的指令匹配处理
-            if (!commandarInterceptorSupport.onEvent(commandar, session, packet.getData())) {
+            if (!commandarInterceptorSupport.onCommand(commandar, session, packet.getParameter().getArguments())) {
                 return;
             }
             Throwable cause = null;
             try {
-                Object[] args = ParameterResolver.resolveParameterArguments(commandar, session, packet.getData());
-                commandarInvocation.invoke(commandar, args);
+                Object[] arguments = ParameterResolver.resolveParameterArguments(commandar, session, packet);
+                commandarInvocation.invoke(commandar, arguments);
             } catch (Throwable ex) {
                 cause = ex;
                 throw ex;
@@ -113,9 +112,9 @@ public final class WebSocketContextHolder {
         IPubSubService pubsubService = distributedService.getPubSubService();
         pubsubService.unregisterSession(session.getNamespace().getName(), session.getSessionId());
         // 获取注解接口的 OnDisconnect 方法并执行断开连接回调
-        List<Commandar> onDisconnectCommandList = commandarRouter.getCommandar(session.getPath(), OnDisconnect.class.getSimpleName());
-        if (onDisconnectCommandList != null) {
-            for (Commandar commandar : onDisconnectCommandList) {
+        List<Commandar> onCommandList = commandarRouter.getCommandar(session.getPath(), OnDisconnect.class.getSimpleName());
+        if (onCommandList != null) {
+            for (Commandar commandar : onCommandList) {
                 commandarInvocation.invoke(commandar, session);
             }
         }
@@ -123,9 +122,9 @@ public final class WebSocketContextHolder {
 
     public boolean onError(String path, Throwable cause) {
         // 获取注解接口的 OnError 方法并执行方法回调
-        List<Commandar> onErrorCommandList = commandarRouter.getCommandar(path, OnError.class.getSimpleName());
-        if (onErrorCommandList != null) {
-            for (Commandar commandar : onErrorCommandList) {
+        List<Commandar> onCommandList = commandarRouter.getCommandar(path, OnError.class.getSimpleName());
+        if (onCommandList != null) {
+            for (Commandar commandar : onCommandList) {
                 try {
                     commandarInvocation.invoke(commandar, cause);
                 } catch (Throwable ex) {
@@ -133,6 +132,6 @@ public final class WebSocketContextHolder {
                 }
             }
         }
-        return onErrorCommandList != null && !onErrorCommandList.isEmpty();
+        return onCommandList != null && !onCommandList.isEmpty();
     }
 }

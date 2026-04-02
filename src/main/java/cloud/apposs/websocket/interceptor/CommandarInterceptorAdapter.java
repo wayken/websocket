@@ -4,6 +4,8 @@ import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.commandar.Commandar;
 import cloud.apposs.websocket.protocol.HandshakeData;
 
+import java.util.List;
+
 public class CommandarInterceptorAdapter implements CommandarInterceptor {
 	@Override
 	public boolean isAuthorized(HandshakeData data) throws Exception {
@@ -11,7 +13,7 @@ public class CommandarInterceptorAdapter implements CommandarInterceptor {
 	}
 
 	@Override
-	public boolean onEvent(Commandar commandar, WSSession session, Object argument) {
+	public boolean onCommand(Commandar commandar, WSSession session, List<Object> argument) {
 		return true;
 	}
 

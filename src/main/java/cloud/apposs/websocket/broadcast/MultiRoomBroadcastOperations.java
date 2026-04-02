@@ -26,14 +26,24 @@ public class MultiRoomBroadcastOperations implements BroadcastOperations {
     }
 
     @Override
-    public boolean sendEvent(short event, Object... data) throws Exception {
+    public boolean sendCommand(String command, Object... data) throws Exception {
         if (broadcastOperations == null || broadcastOperations.size() == 0) {
             return false;
         }
         for (BroadcastOperations b : broadcastOperations) {
-            b.sendEvent(event, data);
+            b.sendCommand(command, data);
         }
         return true;
+    }
+
+    @Override
+    public void sendResponse(String id, Object... parameter) throws Exception {
+        if (broadcastOperations == null || broadcastOperations.size() == 0) {
+            return;
+        }
+        for (BroadcastOperations b : broadcastOperations) {
+            b.sendResponse(id, parameter);
+        }
     }
 
     @Override

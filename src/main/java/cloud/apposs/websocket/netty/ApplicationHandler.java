@@ -5,6 +5,7 @@ import cloud.apposs.util.StrUtil;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.WSSessionBox;
+import cloud.apposs.websocket.WebSocketContextHolder;
 import cloud.apposs.websocket.annotation.Order;
 import cloud.apposs.websocket.annotation.ServerEndpoint;
 import cloud.apposs.websocket.commandar.CommandarInvocation;

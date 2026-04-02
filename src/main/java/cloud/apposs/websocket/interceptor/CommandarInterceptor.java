@@ -4,6 +4,8 @@ import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.commandar.Commandar;
 import cloud.apposs.websocket.protocol.HandshakeData;
 
+import java.util.List;
+
 /**
  * SocketIO拦截器，对HTTP/WebSocket请求进行拦截操作，在全局只有一个实例，
  * 一般用于以下场景：
@@ -30,7 +32,7 @@ public interface CommandarInterceptor {
      * @param argument  指令参数
      * @return true/false 通过拦截验证验证返回true
      */
-    boolean onEvent(Commandar commandar, WSSession session, Object argument);
+    boolean onCommand(Commandar commandar, WSSession session, List<Object> argument);
 
     /**
      * 整个SocketIO消息事件处理完毕回调方法，无论事件消息处理有没有成功，

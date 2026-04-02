@@ -1,82 +1,21 @@
-# WebSocket Server Framework
+# teambeit-websocket
 
-[![Java](https://img.shields.io/badge/Java-8+-green.svg)](https://www.oracle.com/java/)
-[![Netty](https://img.shields.io/badge/Netty-4.x-blue.svg)](https://netty.io/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+基于 Netty 构建的高性能 WebSocket 二进制通讯框架，提供注解驱动的开发模式、房间广播、RPC 请求响应、附件传输以及分布式集群支持。
 
-A high-performance WebSocket server framework based on binary protocol, featuring annotation-driven development with enterprise-grade features including multi-endpoint support, room management, and interceptors.
+## 特性
 
-## 📚 Project Overview
+- 注解驱动，开发简洁（`@ServerEndpoint`、`@OnConnect`、`@OnCommand` 等）
+- 自定义二进制协议，高效紧凑
+- 支持 WebSocket RPC 请求-响应通讯
+- 支持二进制附件传输
+- 内置房间（Room）管理与广播
+- 拦截器机制，支持鉴权、限流、日志等
+- 分布式集群支持（Memory / Redis / Hazelcast）
+- 支持 SSL/TLS
 
-This framework is inspired by Socket.IO's design philosophy, but unlike Socket.IO's verbose text protocol, it uses a custom binary protocol for communication, significantly reducing network transmission bytes while dramatically improving communication performance.
+## 快速开始
 
-### 🚀 Core Features
-
-- **🔥 High-Performance Binary Protocol** - Reduces transmission bytes and improves communication efficiency compared to traditional text protocols
-- **📡 Multi-Endpoint Support** - Supports multiple WebSocket endpoints running on the same server
-- **🏠 Room Management** - Built-in room mechanism supporting broadcasting and group communication
-- **🛡️ Interceptor Mechanism** - Provides interceptor support for authentication, authorization, rate limiting, etc.
-- **📝 Annotation-Driven** - Annotation-based development approach that simplifies the programming model
-- **⚡ Asynchronous Non-Blocking** - Built on Netty for high-concurrency connection support
-- **🔧 Dependency Injection** - Integrated IoC container with auto-wiring support
-- **📊 Extensibility** - Modular design for easy extension and customization
-
-## 🏗️ Architecture Design
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    WebSocket Application                     │
-├──────────────────────────────────────────────────────────────┤
-│  @ServerEndpoint    │   Interceptors   │   Broadcast Ops     │
-│  ┌─────────────────┬┴──────────────────┴───────────────────┐ │
-│  │  Annotations    │            Namespace Manager          │ │
-│  │  @OnConnect     ├───────────────────────────────────────┤ │
-│  │  @OnEvent       │            Session Manager            │ │
-│  │  @OnDisconnect  ├───────────────────────────────────────┤ │
-│  │  @OnError       │         Command Router                │ │
-│  └─────────────────┴───────────────────────────────────────┘ │
-├──────────────────────────────────────────────────────────────┤
-│                    Protocol Layer                            │
-│  ┌─────────────────┬──────────────────┬─────────────────┐    │
-│  │  Packet Encoder │  Binary Protocol │ Packet Decoder  │    │
-│  └─────────────────┴──────────────────┴─────────────────┘    │
-├──────────────────────────────────────────────────────────────┤
-│                     Netty Layer                              │
-│  ┌─────────────────┬──────────────────┬─────────────────┐    │
-│  │ Channel Handler │   Event Loop     │  Channel Group  │    │
-│  └─────────────────┴──────────────────┴─────────────────┘    │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## 📦 Binary Protocol Format
-
-The framework uses a custom binary protocol with the following packet format:
-
-```
-+---------+--------------+------------+------------+--------+------+
-| VERSION | PKG_LEN_SIZE | EVENT_TYPE | EVENT_NAME | STATUS | DATA |
-+---------+--------------+------------+------------+--------+------+
-| 1 byte  | 8 byte       | 1 byte     | 2 byte     | 2 byte | bytes|
-+---------+--------------+------------+------------+--------+------+
-```
-
-**Protocol Field Description:**
-- `VERSION`: Protocol version number, current version is 1
-- `PKG_LEN_SIZE`: Total packet length, 8 bytes
-- `EVENT_TYPE`: Event type, supports connection, disconnection, message, etc.
-- `EVENT_NAME`: Event name, supports up to 65535 different events
-- `STATUS`: Status code indicating processing result
-- `DATA`: Business data, supports any format
-
-## 🚀 Quick Start
-
-### Requirements
-
-- Java 8+
-- Maven 3.6+
-- [Teambeit Cloud Microservices Framework 1.0+](https://github.com/wayken/cloud)
-
-### 1. Add Dependency
+### 1. 添加依赖
 
 ```xml
 <dependency>
@@ -86,307 +25,276 @@ The framework uses a custom binary protocol with the following packet format:
 </dependency>
 ```
 
-### 2. Create WebSocket Endpoint
+### 2. 配置文件
+
+在 `src/main/resources/application.all.xml` 中添加：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<bootor-config>
+    <!-- 扫描基础包（必填） -->
+    <property name="basePackage">com.example.websocket</property>
+    <property name="charset">utf-8</property>
+    <property name="host">0.0.0.0</property>
+    <property name="port">7010</property>
+    <!-- 分布式类型：memory / redission / hazelcast -->
+    <property name="distributedType">memory</property>
+</bootor-config>
+```
+
+### 3. 启动服务
 
 ```java
-@ServerEndpoint("/chat")
+public class Application {
+    public static void main(String[] args) throws Exception {
+        WebSocketApplication.run(Application.class, args);
+    }
+}
+```
+
+### 4. 定义 Endpoint
+
+```java
+@ServerEndpoint("/socket.io")
 public class ChatEndpoint {
     @OnConnect
     public void onConnect(WSSession session) {
-        System.out.println("User connected: " + session.getSessionId());
-        session.joinRoom("lobby");
+        System.out.println("client connected: " + session.getSessionId());
     }
-    
-    @OnEvent(1001) // Chat message event
-    public void onChatMessage(WSSession session, String message) {
-        // Broadcast message to all users in the room
-        session.getNamespace().getRoomOperations("lobby")
-                .sendEvent((short) 1002, "User message: " + message);
+
+    @OnCommand("chat")
+    public void onChat(WSSession session, ChatObject msg) throws Exception {
+        session.sendCommand("chat", msg.getUsername() + ": " + msg.getMessage());
     }
-    
+
     @OnDisconnect
     public void onDisconnect(WSSession session) {
-        System.out.println("User disconnected: " + session.getSessionId());
-        session.leaveRoom("lobby");
+        System.out.println("client disconnected");
     }
-    
+
     @OnError
-    public void onError(WSSession session, Throwable throwable) {
-        System.err.println("Connection error: " + throwable.getMessage());
+    public void onError(Throwable ex) {
+        ex.printStackTrace();
     }
 }
 ```
 
-### 3. Start Server
+
+## 注解说明
+
+| 注解 | 作用 |
+|------|------|
+| `@ServerEndpoint(path)` | 标记一个类为 WebSocket 服务端，`path` 为客户端连接路径 |
+| `@OnConnect` | 客户端建立连接时触发，方法参数为 `WSSession` |
+| `@OnDisconnect` | 客户端断开连接时触发，方法参数为 `WSSession` |
+| `@OnCommand(cmd)` | 接收指定指令时触发，支持自定义参数类型 |
+| `@OnError` | 连接发生异常时触发，方法参数为 `Throwable` |
+| `@Order` | 调整同一事件多个处理方法的执行顺序 |
+
+### @OnCommand 参数绑定
+
+方法参数支持任意自定义 POJO（需有默认构造函数），框架会自动从 JSON 数组中按顺序反序列化：
+
+```java
+// 客户端发送：socket.emit("chat", {"username":"alice","message":"hi"}, "extra")
+@OnCommand("chat")
+public void onChat(WSSession session, ChatObject msg, String extra) throws Exception {
+    // msg 自动反序列化为 ChatObject，extra 为字符串
+}
+```
+
+## 协议格式
+
+框架使用自定义二进制协议，包头固定 4 字节：
+
+```
++---------+--------------+--------+----------+---+-----------+
+| VERSION | COMMAND_TYPE | STATUS | METADATA | # | PARAMETER |
++---------+--------------+--------+----------+---+-----------+
+| 1 byte  | 1 byte       | 2 byte | JSON     |   | JSON Array|
++---------+--------------+--------+----------+---+-----------+
+```
+
+- `VERSION`：协议版本，当前为 `0x01`
+- `COMMAND_TYPE`：`0=HANDSHAKE` `1=COMMAND` `2=DISCONNECT` `3=ERROR`
+- `STATUS`：状态码，范围 `[0, 65535]`
+- `METADATA`：JSON 对象，包含 `_cmd`（指令名）、`_id`（RPC请求ID）、`_num`（附件数量）
+- `PARAMETER`：JSON 数组，业务参数列表
+
+完整数据包示例：
+
+```
+1\x01\x00\x00{"_cmd":"chat","_id":"uuid","_num":0}#[{"username":"alice","message":"hi"}]
+```
+
+## 核心功能
+
+### 广播与房间
+
+```java
+@OnCommand("join")
+public void onJoin(WSSession session, String room) throws Exception {
+    session.joinRoom(room);
+}
+
+@OnCommand("broadcast")
+public void onBroadcast(WSSession session, String room, ChatObject msg) throws Exception {
+    // 广播给房间内所有客户端
+    session.getDistributedRoomOperations(room).sendCommand("chat", msg);
+}
+
+@OnCommand("broadcast_all")
+public void onBroadcastAll(WSSession session, ChatObject msg) throws Exception {
+    // 广播给命名空间下所有客户端
+    session.getDistributedRoomOperations().sendCommand("chat", msg);
+}
+```
+
+### RPC 请求-响应
+
+服务端接收带 `_id` 的请求，通过 `sendResponse` 回复：
+
+```java
+@OnCommand("query")
+public void onQuery(WSSession session, Metadata metadata, QueryRequest req) throws Exception {
+    QueryResult result = doQuery(req);
+    // 将结果回复给发起 RPC 请求的客户端
+    session.sendResponse(metadata.getCommandId(), result);
+}
+```
+
+### 附件传输
+
+发送和接收二进制附件（如文件）：
+
+```java
+// 接收附件
+@OnCommand("upload")
+public void onUpload(WSSession session, AttachmentObject file) throws Exception {
+    System.out.println("received: " + file.getName() + ", size: " + file.getContent().length);
+}
+
+// 发送附件
+@OnCommand("download")
+public void onDownload(WSSession session, Metadata metadata) throws Exception {
+    AttachmentObject file = new AttachmentObject();
+    file.setName("report.pdf");
+    file.setContent(loadFileBytes());
+    session.sendResponse(metadata.getCommandId(), file);
+}
+```
+
+附件对象中使用占位符标记二进制数据位置，框架会自动在主包后追加附件数据包。
+
+### 拦截器
+
+实现 `CommandarInterceptor` 或继承 `CommandarInterceptorAdapter`，并加上 `@Component` 注解：
 
 ```java
 @Component
-public class WebSocketServer {
-    public static void main(String[] args) throws Exception {
-        // Start WebSocket service
-        WebSocketApplication.run(WebSocketServer.class, args);
-    }
-}
-```
+public class AuthInterceptor extends CommandarInterceptorAdapter {
 
-## 📋 Core Annotations
-
-### @ServerEndpoint
-Defines WebSocket server endpoint and specifies the URL path for client connections.
-
-```java
-@ServerEndpoint(value = {"/chat", "/game"}, host = "localhost")
-public class MultiPathEndpoint {
-    // Supports multiple paths and host binding
-}
-```
-
-### @OnConnect
-Callback method when WebSocket connection is established.
-
-```java
-@OnConnect
-public void onConnect(WSSession session) {
-    // Connection establishment logic
-}
-```
-
-### @OnEvent
-Handles event messages sent by clients.
-```java
-@OnEvent(1001)
-public void handleUserLogin(WSSession session, LoginRequest request) {
-    // Handle user login event
-}
-```
-
-### @OnDisconnect
-Callback method when WebSocket connection is closed.
-```java
-@OnDisconnect
-public void onDisconnect(WSSession session) {
-    // Connection cleanup logic
-}
-```
-
-### @OnError
-Error callback during connection or processing.
-```java
-@OnError
-public void onError(WSSession session, Throwable error) {
-    // Error handling logic
-}
-```
-
-### @Order
-Controls execution order of multiple handlers of the same type.
-
-```java
-@OnConnect
-@Order(1)
-public void firstConnect(WSSession session) {
-    // First connection handler to execute
-}
-
-@OnConnect  
-@Order(2)
-public void secondConnect(WSSession session) {
-    // Second connection handler to execute
-}
-```
-
-## 🏠 Room Management
-
-The framework includes powerful built-in room management functionality, supporting user join/leave operations and room broadcasting.
-
-```java
-// Join room
-session.joinRoom("game-room-1");
-
-// Leave room
-session.leaveRoom("game-room-1");
-
-// Room broadcast
-session.getNamespace().getRoomOperations("game-room-1")
-       .sendEvent((short) 2001, "Game started");
-
-// Get all users in room
-Collection<WSSession> clients = session.getNamespace()
-                                      .getRoomOperations("game-room-1")
-                                      .getClients();
-```
-
-## 🛡️ Interceptor Mechanism
-
-By implementing the `CommandarInterceptor` interface, you can add global interceptors for authentication, authorization, rate limiting, and other features.
-
-```java
-@Component
-public class AuthInterceptor implements CommandarInterceptor {
-    
     @Override
     public boolean isAuthorized(HandshakeData data) throws Exception {
-        // Authentication check before connection
-        String token = data.getHttpHeaders().get("Authorization");
+        // 握手阶段鉴权，返回 false 则拒绝连接
+        String token = data.getParameters().get("token");
         return validateToken(token);
     }
-    
+
     @Override
-    public boolean onEvent(Commandar commandar, WSSession session, Object argument) {
-        // Interceptor check before event processing
-        return checkPermission(session, commandar.getEvent());
+    public boolean onCommand(Commandar commandar, WSSession session, List<Object> args) {
+        // 每次指令处理前调用，返回 false 则中断处理
+        return true;
     }
-    
+
     @Override
-    public void afterCompletion(Commandar commandar, WSSession session, Throwable throwable) {
-        // Cleanup work after event processing completion
-        if (throwable != null) {
-            logger.error("Event processing exception", throwable);
-        }
+    public void afterCompletion(Commandar commandar, WSSession session, Throwable ex) {
+        // 指令处理完成后调用，可用于性能监控、资源清理
     }
 }
 ```
 
-## 📡 Broadcast Operations
 
-The framework provides flexible broadcasting mechanisms, supporting global and room broadcasts.
+## 配置参考
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `basePackage` | — | 扫描包路径（必填） |
+| `host` | `0.0.0.0` | 绑定地址 |
+| `port` | `7010` | 绑定端口 |
+| `numOfGroup` | CPU核数+1 | EventLoop 线程数 |
+| `executorOn` | `false` | 是否开启业务线程池 |
+| `workerCount` | CPU核数×2 | 业务线程池大小 |
+| `keepAlive` | `false` | 是否保持长连接不超时 |
+| `maxHttpContentLength` | `2MB` | HTTP 内容最大长度 |
+| `maxFramePayloadLength` | `2MB` | WebSocket 帧最大长度 |
+| `firstDataTimeout` | `5000ms` | 首次数据传输超时 |
+| `distributedType` | `memory` | 分布式类型 |
+| `distributedServiceName` | `websocket` | 分布式服务名（集群必填） |
+| `distributedServerAddress` | `127.0.0.1:3679` | 分布式服务地址 |
+| `socketReconnectOn` | `true` | 客户端自动重连 |
+| `socketMaxReconnectAttempts` | `5` | 最大重连次数（-1不限制） |
+| `socketReconnectInterval` | `3000ms` | 重连间隔 |
+| `logLevel` | `INFO` | 日志级别 |
+| `logAppender` | `CONSOLE` | 日志输出终端 |
+
+## 分布式部署
+
+框架支持三种分布式模式，通过 `distributedType` 配置切换：
+
+**内存模式（单机/开发）**
+```xml
+<property name="distributedType">memory</property>
+```
+
+**Redis 模式（需引入 redisson 依赖）**
+```xml
+<property name="distributedType">redission</property>
+<property name="distributedServiceName">my-app-ws</property>
+<property name="distributedServerAddress">127.0.0.1:6379</property>
+```
+
+**Hazelcast 模式（需引入 hazelcast 依赖）**
+```xml
+<property name="distributedType">hazelcast</property>
+<property name="distributedServiceName">my-app-ws</property>
+```
+
+> 同一业务的多个实例必须使用相同的 `distributedServiceName` 才能组成集群，不同业务使用不同名称互不干扰。
+
+## SSL/TLS
 
 ```java
-// Global broadcast - Send to all connected clients
-session.getNamespace().getBroadcastOperations()
-       .sendEvent((short) 3001, "System announcement", "Server maintenance in 5 minutes");
-
-// Room broadcast - Send to clients in specific room
-session.getNamespace().getRoomOperations("vip-room")
-       .sendEvent((short) 3002, "VIP exclusive message");
-
-// Broadcast excluding sender
-session.getNamespace().getBroadcastOperations()
-       .sendEventExclude(session, (short) 3003, "Message to other users");
+WSConfig config = WebSocketApplication.generateConfiguration(Application.class, args);
+config.setSslProtocol("TLSv1.2");
+config.setKeyStore(Application.class.getResourceAsStream("/keystore.jks"));
+config.setKeyStorePassword("your-password");
+WebSocketApplication.run(Application.class, config, args);
 ```
 
-## ⚙️ Configuration Options
+## 项目结构
 
-```java
-WSConfig config = new WSConfig();
-config.setHost("0.0.0.0");                    // Bind host
-config.setPort(8080);                         // Listen port
-config.setNumOfGroup(1);                      // Boss thread count
-config.setWorkerCount(0);                     // Worker thread count (0 = CPU cores)
-config.setMaxFramePayloadLength(65536);       // Max frame payload length
-config.setMaxHttpContentLength(65536);        // Max HTTP content length
-config.setHeartbeatInterval(60);              // Heartbeat interval (seconds)
-config.setHeartbeatTimeout(180);              // Heartbeat timeout (seconds)
-// Start with custom configuration
-ApplicationContext context = WebSocketApplication.run(Application.class, config);
+```
+src/main/java/cloud/apposs/websocket/
+├── annotation/          # 注解定义（@ServerEndpoint、@OnCommand 等）
+├── broadcast/           # 广播操作接口与实现
+├── commandar/           # 指令路由与调用
+├── distributed/         # 分布式服务（Memory/Redis/Hazelcast）
+├── interceptor/         # 拦截器接口与适配器
+├── namespace/           # 命名空间与房间管理
+├── netty/               # Netty 底层实现
+├── protocol/            # 二进制协议编解码
+├── scheduler/           # 定时任务调度
+├── timer/               # 时间轮实现
+├── WebSocketApplication.java   # 启动入口
+├── WSConfig.java               # 配置类
+└── WSSession.java              # 会话抽象
 ```
 
-## 🎯 Use Cases
+## 参考
 
-- **💬 Real-time Chat Systems** - Private chat, group chat, room chat support
-- **🎮 Online Games** - Real-time game state synchronization, multiplayer battles
-- **📊 Real-time Data Push** - Stock quotes, monitoring data real-time updates
-- **🔔 Message Notification Systems** - Real-time message push, system notifications
-- **👥 Collaborative Office** - Online document collaboration, real-time editing
-- **📹 Live Streaming Interaction** - Bullet screen systems, gift interactions
+- [Netty-SocketIO](https://github.com/mrniko/netty-socketio)
 
-## 📈 Performance Characteristics
+## License
 
-- **High Concurrency Support**: Based on Netty NIO, supports tens of thousands of concurrent connections
-- **Low Latency Communication**: Binary protocol reduces serialization overhead
-- **Memory Optimization**: Zero-copy technology and object pooling
-- **Scalability**: Supports horizontal scaling and load balancing
-
-## 🔧 Extension Development
-
-### Custom Protocol Encoder/Decoder
-
-```java
-@Component
-public class CustomJsonSupport implements JsonSupport {
-    @Override
-    public <T> T toObject(String json, Class<T> clazz) {
-        // Custom JSON deserialization
-        return customParser.parse(json, clazz);
-    }
-    
-    @Override
-    public String toJson(Object object) {
-        // Custom JSON serialization
-        return customParser.toJson(object);
-    }
-}
-```
-
-### Custom Scheduler
-
-```java
-@Component
-public class CustomScheduler implements CancelableScheduler {
-    @Override
-    public void schedule(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit) {
-        // Custom task scheduling logic
-    }
-}
-```
-
-## 📊 Monitoring & Operations
-
-The framework provides rich runtime information access interfaces:
-
-```java
-// Get namespace information
-Namespace namespace = context.getNamespace("/chat");
-int clientCount = namespace.getAllClients().size();
-
-// Get room information
-Set<String> rooms = namespace.getRooms();
-Collection<WSSession> roomClients = namespace.getRoomClients("game-1");
-
-// Get session information
-WSSession session = namespace.getSession(sessionId);
-boolean isConnected = session.isConnected();
-```
-
-## 🛠️ Development Tools
-
-The project provides client testing tools for convenient development and debugging:
-
-```bash
-# Extract client tools
-unzip src/main/resources/websocket-client.zip
-
-# Run test client
-node client.js ws://localhost:8080/chat
-```
-
-## 🤝 Contributing
-
-We welcome Issues and Pull Requests to improve the project:
-
-1. Fork this project
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the [Apache 2.0](LICENSE) License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Netty](https://netty.io/) - High-performance network application framework
-- [Jackson](https://github.com/FasterXML/jackson) - JSON processing library
-- [Socket.IO](https://socket.io/) - Design inspiration source
-
-## 📞 Contact
-
-For questions or suggestions, please contact us through:
-
-- Submit [Issue](https://github.com/your-org/websocket/issues)
-- Send email to: [your-email@example.com]
-
----
-
-**⭐ If this project helps you, please give it a Star!**
+[LICENSE](LICENSE)

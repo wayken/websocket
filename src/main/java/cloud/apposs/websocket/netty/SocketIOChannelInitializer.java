@@ -2,6 +2,7 @@ package cloud.apposs.websocket.netty;
 
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSessionBox;
+import cloud.apposs.websocket.WebSocketContextHolder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;

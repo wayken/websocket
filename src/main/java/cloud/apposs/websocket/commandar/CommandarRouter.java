@@ -64,8 +64,8 @@ public final class CommandarRouter {
             List<Commandar> commandarList = commandars.computeIfAbsent(routerPath, k -> new LinkedList<Commandar>());
             commandarList.add(commandar);
             List<Class<?>> matchedParameterList = ParameterResolver.resolveParameterTypes(commandar);
-            for (Class<?> parameter : matchedParameterList) {
-                jsonSupport.addEventMapping(path, command, parameter);
+            if (!matchedParameterList.isEmpty()) {
+                jsonSupport.addCommandMapping(path, command, matchedParameterList);
             }
             doSortByOrderAnnotation(commandarList);
             Logger.info("Mapped %s on %s", commandar, doOutputMethod(commandar.getMethod()));
@@ -106,8 +106,8 @@ public final class CommandarRouter {
                         + clazz + "." + method.getName() + ", must have Throwable parameter");
             }
             boolean hasException = false;
-            for (Class<?> eventType : method.getParameterTypes()) {
-                if (Throwable.class.equals(eventType)) {
+            for (Class<?> parameterType : method.getParameterTypes()) {
+                if (Throwable.class.equals(parameterType)) {
                     hasException = true;
                 }
             }
@@ -116,8 +116,8 @@ public final class CommandarRouter {
                         + clazz + "." + method.getName() + ", must have Throwable parameter");
             }
             return OnError.class.getSimpleName();
-        } else if (method.isAnnotationPresent(OnEvent.class)) {
-            OnEvent annotation = method.getAnnotation(OnEvent.class);
+        } else if (method.isAnnotationPresent(OnCommand.class)) {
+            OnCommand annotation = method.getAnnotation(OnCommand.class);
             return String.valueOf(annotation.value());
         }
         return null;

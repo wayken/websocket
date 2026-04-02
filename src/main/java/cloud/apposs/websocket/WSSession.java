@@ -3,7 +3,6 @@ package cloud.apposs.websocket;
 import cloud.apposs.websocket.broadcast.BroadcastOperations;
 import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.namespace.Namespace;
-import cloud.apposs.websocket.netty.WebSocketContextHolder;
 import cloud.apposs.websocket.protocol.HandshakeData;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.protocol.PacketEncoder;
@@ -12,10 +11,8 @@ import cloud.apposs.websocket.scheduler.SchedulerKey;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.nio.ByteBuffer;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -146,14 +143,26 @@ public abstract class WSSession {
     /**
      * 发送消息数据包
      *
-     * @param event 事件名称
-     * @param data  数据包，可由业务自定义JSON对象格式
+     * @param command   事件名称
+     * @param parameter 数据包，可由业务自定义JSON对象格式
      */
-    public void sendEvent(short event, Object data) throws Exception {
-        Packet packet = new Packet();
-        packet.setType(PacketType.EVENT);
-        packet.setEvent(event);
-        packet.setData(data);
+    public void sendCommand(String command, Object... parameter) throws Exception {
+        Packet packet = new Packet(PacketType.COMMAND);
+        packet.setCommand(command);
+        packet.getParameter().setArguments(Arrays.asList(parameter));
+        send(packet);
+    }
+
+    /**
+     * 发送消息响应包，主要应用于 WEBSOCKET RPC 请求-响应通讯场景
+     *
+     * @param id        指令ID
+     * @param parameter 数据包，可由业务自定义JSON对象格式
+     */
+    public void sendResponse(String id, Object... parameter) throws Exception {
+        Packet packet = new Packet(PacketType.COMMAND);
+        packet.getMetadata().setCommandId(id);
+        packet.getParameter().setArguments(Arrays.asList(parameter));
         send(packet);
     }
 
@@ -165,9 +174,21 @@ public abstract class WSSession {
      */
     public boolean send(Packet packet) throws Exception {
         if (disconnected.get()) {
-            throw new IOException("session is disconnected");
+            throw new IOException("Session[" + sessionId + "] is disconnected");
         }
-        return handlePacketSend(PacketEncoder.encode(packet, configuration.getJsonSupport()));
+        // 先发送数据包主体内容，再发送数据包的附件内容（如果有的话）
+        byte[] buffer = PacketEncoder.encode(packet, configuration.getJsonSupport());
+        boolean success = handlePacketSend(buffer);
+        if (!success) {
+            return false;
+        }
+        List<ByteBuffer> attachments = packet.getAttachments();
+        if (attachments != null) {
+            for (ByteBuffer attachment : packet.getAttachments()) {
+                handlePacketSend(attachment.array());
+            }
+        }
+        return true;
     }
 
     /**

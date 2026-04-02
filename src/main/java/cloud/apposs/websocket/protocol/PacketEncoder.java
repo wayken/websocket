@@ -1,7 +1,11 @@
 package cloud.apposs.websocket.protocol;
 
+import cloud.apposs.websocket.util.Buffers;
+import io.netty.buffer.Unpooled;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * WebSocket数据包编码器，数据包格式详见{@link Packet}
@@ -17,27 +21,52 @@ public class PacketEncoder {
         if (packet == null) {
             return null;
         }
+
         // 如果包体数据不为空，编码数据包体，同时获取数据包体的字节长度
         byte[] data = null;
-        if (packet.getData() != null) {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            jsonSupport.writeValue(outputStream, packet.getData());
-            data = outputStream.toByteArray();
-        } else {
-            data = new byte[0];
+        switch (packet.getType()) {
+            case HANDSHAKE: {
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                jsonSupport.writeValue(outputStream, packet.getParameter());
+                data = outputStream.toByteArray();
+                break;
+            }
+            case COMMAND: {
+                // 编码参数数据
+                ByteArrayOutputStream paramStream = new ByteArrayOutputStream();
+                jsonSupport.writeValue(paramStream, packet.getParameter().getArguments());
+                byte[] paramBytes = paramStream.toByteArray();
+                // 附件数据序列化
+                List<byte[]> buffers = jsonSupport.getBuffers();
+                if (!buffers.isEmpty()) {
+                    packet.getMetadata().setAttachmentNum(buffers.size());
+                    for (byte[] array : buffers) {
+                        packet.addAttachment(Buffers.wrappedBuffer(array));
+                    }
+                }
+                // 编码元数据
+                ByteArrayOutputStream metaStream = new ByteArrayOutputStream();
+                jsonSupport.writeValue(metaStream, packet.getMetadata());
+                byte[] metaBytes = metaStream.toByteArray();
+                // 拼接：METADATA + '#' + PARAMETER
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                outputStream.write(metaBytes);
+                outputStream.write(Packet.SEPARATOR);
+                outputStream.write(paramBytes);
+                data = outputStream.toByteArray();
+                break;
+            }
+            default: {
+                data = new byte[0];
+                break;
+            }
         }
-        ByteBuffer buffer = ByteBuffer.allocate(Packet.Head.HEADER_LEN + data.length);
-        // 编码数据包头
-        buffer.put(Packet.Head.VERSION);
-        buffer.putLong(data.length);
+        // 头部：VERSION(1) + EVENT_TYPE(1) + STATUS(2)
+        ByteBuffer buffer = ByteBuffer.allocate(Packet.HEADER_LEN + data.length);
+        buffer.put(Packet.VERSION);
         buffer.put(packet.getType().getValue());
-        buffer.putShort(packet.getEvent());
         buffer.putShort(packet.getStatus());
-        buffer.put(data, 0, data.length);
-        buffer.rewind();
-        int len = buffer.limit() - buffer.position();
-        byte[] response = new byte[len];
-        buffer.get(response);
-        return response;
+        buffer.put(data);
+        return buffer.array();
     }
 }

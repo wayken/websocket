@@ -49,12 +49,19 @@ public class MultiSessionBroadcastOperations implements BroadcastOperations {
     }
 
     @Override
-    public boolean sendEvent(short event, Object... data) throws Exception {
-        Packet packet = new Packet();
-        packet.setType(PacketType.EVENT);
-        packet.setEvent(event);
-        packet.setData(Arrays.asList(data));
+    public boolean sendCommand(String command, Object... data) throws Exception {
+        Packet packet = new Packet(PacketType.COMMAND);
+        packet.setCommand(command);
+        packet.getParameter().setArguments(Arrays.asList(data));
         return send(packet);
+    }
+
+    @Override
+    public void sendResponse(String id, Object... parameter) throws Exception {
+        Packet packet = new Packet(PacketType.COMMAND);
+        packet.getMetadata().setCommandId(id);
+        packet.getParameter().setArguments(Arrays.asList(parameter));
+        send(packet);
     }
 
     @Override
