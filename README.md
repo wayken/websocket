@@ -214,6 +214,51 @@ public class AuthInterceptor extends CommandarInterceptorAdapter {
 }
 ```
 
+## 参数校验
+
+框架内置 OOP 风格的参数校验器，通过在 POJO 字段上添加注解自动完成校验与类型转换，校验失败时抛出 `IllegalArgumentException`。
+
+### 使用方式
+
+```java
+public class RegisterRequest {
+    @NotBlank
+    private String username;
+
+    @Email
+    private String email;
+
+    @Mobile(require = false)
+    private String phone;
+
+    @Number(min = 18, max = 120)
+    private int age;
+}
+```
+
+### 校验注解说明
+
+| 注解 | 适用类型 | 说明 | 主要属性 |
+|------|----------|------|----------|
+| `@NotNull` | 任意对象 | 值不能为 null | `message` |
+| `@NotEmpty` | String / List / Map | 不能为空（长度/元素数 > 0） | `require`, `message` |
+| `@NotBlank` | String | trim 后长度必须 > 0，回写 trim 后的值 | `require`, `message` |
+| `@Bool` | Boolean | 必须为布尔类型，支持默认值 | `require`, `value`, `message` |
+| `@Digits` | int | 非负整数（>= 0），可设最大值 | `require`, `max`, `message` |
+| `@Digits64` | long | 非负长整数（>= 0L），可设最大值 | `require`, `max`, `message` |
+| `@Number` | int | 整数，可设范围 `[min, max]` | `require`, `min`, `max`, `message` |
+| `@Number64` | long | 长整数，可设范围 `[min, max]` | `require`, `min`, `max`, `message` |
+| `@Id` | long | 正整数（> 0L），通常为 IdWorker 生成的 ID | `require`, `max`, `message` |
+| `@Length` | String | 字符串长度范围，默认自动 trim | `require`, `trim`, `min`, `max`, `message` |
+| `@Email` | String | 合法的电子邮箱格式 | `require`, `message` |
+| `@Mobile` | String | 合法的手机号码格式 | `require`, `message` |
+| `@Pattern` | String | 匹配一个或多个正则表达式 | `require`, `regex`, `xor`, `message` |
+
+### 属性说明
+
+- `require`：默认 `true`，为 `false` 时若值为 null 则跳过校验直接返回 null
+- `message`：自定义错误信息，为空时框架自动生成包含字段名和指令名的提示
+
 
 ## 配置参考
 

@@ -1,7 +1,6 @@
 package cloud.apposs.websocket.protocol;
 
 import cloud.apposs.websocket.util.Buffers;
-import io.netty.buffer.Unpooled;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;

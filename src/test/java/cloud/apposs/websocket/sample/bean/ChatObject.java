@@ -1,5 +1,7 @@
 package cloud.apposs.websocket.sample.bean;
 
+import cloud.apposs.websocket.validator.checker.NotBlank;
+
 /**
  * 客户端发送的消息示例
  * 服务路径：user，参数内容：
@@ -8,6 +10,7 @@ package cloud.apposs.websocket.sample.bean;
  * </pre>
  */
 public class ChatObject {
+    @NotBlank
     private String username;
     private String message;
 

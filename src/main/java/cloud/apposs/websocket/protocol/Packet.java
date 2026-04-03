@@ -9,7 +9,7 @@ import java.util.List;
  * WebSocket 二进制数据包，数据包格式如下：
  * <pre>
  * +---------+--------------+--------+----------+------+-----------+
- * | VERSION | COMMAND_TYPE | STATUS | METADATA |  -   | PARAMETER |
+ * | VERSION | COMMAND_TYPE | STATUS | METADATA |  #   | PARAMETER |
  * +---------+--------------+--------+----------+------+-----------+
  * | 8 bit   | 8 bit        | 16 bit | bits     | char | bits      |
  * +---------+--------------+--------+----------+------+-----------+

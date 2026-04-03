@@ -91,7 +91,13 @@ public final class ParameterResolver {
         return parameters;
     }
 
-    private static boolean isSystemParameter(Class<?> clazz) {
-        return clazz.equals(WSSession.class) || clazz.equals(Metadata.class);
+    /**
+     * 判断是否是系统参数，系统参数不参与方法解析赋值与方法参数校验
+     *
+     * @param  clazz 参数类型
+     * @return 如果是系统参数则返回 true，否则返回 false
+     */
+    public static boolean isSystemParameter(Class<?> clazz) {
+        return WSSession.class.isAssignableFrom(clazz) || Metadata.class.isAssignableFrom(clazz) || Throwable.class.isAssignableFrom(clazz);
     }
 }

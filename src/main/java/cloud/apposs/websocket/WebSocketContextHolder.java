@@ -15,6 +15,7 @@ import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.scheduler.CancelableScheduler;
+import cloud.apposs.websocket.validator.Validator;
 
 import java.util.List;
 
@@ -96,7 +97,15 @@ public final class WebSocketContextHolder {
             }
             Throwable cause = null;
             try {
+                // 解析并校验参数
                 Object[] arguments = ParameterResolver.resolveParameterArguments(commandar, session, packet);
+                for (int i = 0; i < arguments.length; i++) {
+                    Object argument = arguments[i];
+                    if (argument == null || ParameterResolver.isSystemParameter(argument.getClass())) {
+                        continue;
+                    }
+                    Validator.validate(commandar, argument);
+                }
                 commandarInvocation.invoke(commandar, arguments);
             } catch (Throwable ex) {
                 cause = ex;

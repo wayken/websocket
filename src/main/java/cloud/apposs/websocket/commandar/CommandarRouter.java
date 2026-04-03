@@ -22,9 +22,10 @@ public final class CommandarRouter {
     private final JsonSupport jsonSupport;
 
     /**
-     * Commandar Map，WebSocket请求与各个指令方法的映射（详见cloud.apposs.websocket.annotation包），
+     * Commandar Map，WebSocket请求与各个指令方法的映射（详见{@link cloud.apposs.websocket.annotation}包），
      * 数据结构为：
-     * RouterPath->List<Commandar>，利用此数据结构可以实现一个WebSocket指令的多种匹配
+     * RouterPath->List<Commandar>，利用此数据结构可以实现一个WebSocket指令的多种匹配，
+     * 之所以设计成List<Commandar>，是为了支持像@OnConnect、@OnDisconnect、@OnError等注解，支持多个相同指令匹配
      */
     private final Map<RouterPath, List<Commandar>> commandars = new ConcurrentHashMap<>();
 
