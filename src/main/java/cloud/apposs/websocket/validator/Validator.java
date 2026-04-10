@@ -32,6 +32,7 @@ public final class Validator {
         checkers.put(Number.class, new NumberChecker());
         checkers.put(Number64.class, new Number64Checker());
         checkers.put(Id.class, new IdChecker());
+        checkers.put(Uuid.class, new UuidChecker());
         checkers.put(Bool.class, new BoolChecker());
         checkers.put(Length.class, new LengthChecker());
         checkers.put(Email.class, new EmailChecker());

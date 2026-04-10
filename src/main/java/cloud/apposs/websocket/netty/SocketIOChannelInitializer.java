@@ -2,7 +2,7 @@ package cloud.apposs.websocket.netty;
 
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSessionBox;
-import cloud.apposs.websocket.WebSocketContextHolder;
+import cloud.apposs.websocket.WebSocketManager;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -38,12 +38,12 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
 
     private SSLContext sslContext;
 
-    private final WebSocketContextHolder contextHolder;
+    private final WebSocketManager manager;
 
     private final WSSessionBox sessionBox;
 
-    public SocketIOChannelInitializer(WebSocketContextHolder contextHolder, WSSessionBox sessionBox) {
-        this.contextHolder = contextHolder;
+    public SocketIOChannelInitializer(WebSocketManager manager, WSSessionBox sessionBox) {
+        this.manager = manager;
         this.sessionBox = sessionBox;
     }
 
@@ -58,8 +58,8 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
             }
         }
 
-        this.authorizeHandler = new AuthorizeHandler(configuration, contextHolder, sessionBox);
-        this.webSocketHandler = new WebSocketHandler(configuration, contextHolder);
+        this.authorizeHandler = new AuthorizeHandler(configuration, manager, sessionBox);
+        this.webSocketHandler = new WebSocketHandler(configuration, manager);
         this.packetEncodeHandler = new PacketEncodeHandler();
         return this;
     }

@@ -37,8 +37,8 @@ public final class NamespacesHub {
             if (oldNamespace != null) {
                 namespace = oldNamespace;
             }
+            Logger.info("Create Namespace %s success", name);
         }
-        Logger.info("Create Namespace %s success", name);
         return namespace;
     }
 

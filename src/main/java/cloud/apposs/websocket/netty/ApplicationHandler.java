@@ -2,11 +2,7 @@ package cloud.apposs.websocket.netty;
 
 import cloud.apposs.ioc.BeanFactory;
 import cloud.apposs.util.StrUtil;
-import cloud.apposs.websocket.WSConfig;
-import cloud.apposs.websocket.WSSession;
-import cloud.apposs.websocket.WSSessionBox;
-import cloud.apposs.websocket.WebSocketContextHolder;
-import cloud.apposs.websocket.annotation.Order;
+import cloud.apposs.websocket.*;
 import cloud.apposs.websocket.annotation.ServerEndpoint;
 import cloud.apposs.websocket.commandar.CommandarInvocation;
 import cloud.apposs.websocket.commandar.CommandarRouter;
@@ -20,19 +16,19 @@ import cloud.apposs.websocket.protocol.JsonSupport;
 import cloud.apposs.websocket.protocol.JsonSupportWrapper;
 import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import cloud.apposs.websocket.scheduler.HashedWheelTimeoutScheduler;
+import cloud.apposs.websocket.util.Orders;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class ApplicationHandler {
     private final WSConfig configuration;
 
-    /** IOC容器 */
     private BeanFactory beanFactory;
 
-    /**
-     * 指令映射
-     */
+    // 指令映射
     private final CommandarRouter commandarRouter;
 
     private final CommandarInvocation commandarInvocation;
@@ -47,11 +43,9 @@ public class ApplicationHandler {
 
     private final IDistributedService distributedService;
 
-    private final WebSocketContextHolder contextHolder;
+    private final WebSocketManager manager;
 
-    /**
-     * Netty IO处理器初始化
-     */
+    // Netty IO处理器初始化
     private final SocketIOChannelInitializer pipeline;
 
     public ApplicationHandler(WSConfig configuration) throws Exception {
@@ -61,8 +55,8 @@ public class ApplicationHandler {
                 getClass().getClassLoader().loadClass("com.fasterxml.jackson.databind.ObjectMapper");
                 try {
                     Class<?> jjs = getClass().getClassLoader().loadClass("cloud.apposs.websocket.protocol.JacksonJsonSupport");
-                    JsonSupport js = (JsonSupport) jjs.getConstructor().newInstance();
-                    configuration.setJsonSupport(js);
+                    JsonSupport support = (JsonSupport) jjs.getConstructor().newInstance();
+                    configuration.setJsonSupport(support);
                 } catch (Exception e) {
                     throw new IllegalArgumentException(e);
                 }
@@ -77,6 +71,9 @@ public class ApplicationHandler {
         commandarInvocation = new CommandarInvocation(beanFactory);
         // 将Config配置注入IOC容器中，方便Endpoint直接通过@Autowired来获取Config配置
         beanFactory.addBean(configuration);
+        // 初始化全局IOC容器上下文
+        WSContextHolder contextHolder = new WSContextHolder(configuration, beanFactory);
+        beanFactory.addBean(contextHolder);
         // 初始化IOC容器，从WebX框架配置扫描包路径中扫描所有Bean实例
         String basePackages = configuration.getBasePackage();
         if (StrUtil.isEmpty(basePackages)) {
@@ -118,12 +115,12 @@ public class ApplicationHandler {
         // 初始化拦截器
         List<CommandarInterceptor> interceptorList = beanFactory.getBeanHierarchyList(CommandarInterceptor.class);
         // 对拦截器进行排序后添加
-        doSortByOrderAnnotation(interceptorList);
+        Orders.sortByOrderAnnotation(interceptorList);
         for (CommandarInterceptor interceptor : interceptorList) {
             commandarInterceptorSupport.addInterceptor(interceptor);
         }
-        contextHolder = new WebSocketContextHolder(namespacesHub, scheduler, distributedService, commandarRouter, commandarInvocation, commandarInterceptorSupport);
-        pipeline = new SocketIOChannelInitializer(contextHolder, sessionBox);
+        manager = new WebSocketManager(namespacesHub, scheduler, distributedService, commandarRouter, commandarInvocation, commandarInterceptorSupport);
+        pipeline = new SocketIOChannelInitializer(manager, sessionBox);
         pipeline.initialize(configuration);
     }
 
@@ -146,21 +143,5 @@ public class ApplicationHandler {
             pubsubService.unregisterSession(session.getNamespace().getName(), sessionId);
         }
         distributedService.shutdown();
-    }
-
-    /**
-     * 根据Order注解进行列表的排序
-     */
-    private <T> void doSortByOrderAnnotation(List<T> compareList) {
-        Collections.sort(compareList, new Comparator<T>() {
-            @Override
-            public int compare(T object1, T object2) {
-                Order order1 = object1.getClass().getAnnotation(Order.class);
-                Order order2 = object2.getClass().getAnnotation(Order.class);
-                int order1Value = order1 == null ? 0 : order1.value();
-                int order2Value = order2 == null ? 0 : order2.value();
-                return order1Value - order2Value;
-            }
-        });
     }
 }

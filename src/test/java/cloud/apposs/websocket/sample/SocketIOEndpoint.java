@@ -6,6 +6,7 @@ import cloud.apposs.websocket.protocol.Metadata;
 import cloud.apposs.websocket.sample.bean.AttachmentObject;
 import cloud.apposs.websocket.sample.bean.ChatObject;
 import cloud.apposs.websocket.sample.bean.ChatUsers;
+import cloud.apposs.websocket.sample.service.UserService;
 
 import java.util.Map;
 import java.util.UUID;
@@ -13,6 +14,12 @@ import java.util.UUID;
 @ServerEndpoint("/socket.io")
 public class SocketIOEndpoint {
     public static final String CMD_01 = "echo";
+
+    private UserService service;
+
+    public SocketIOEndpoint(UserService service) {
+        this.service = service;
+    }
 
     @OnConnect
     public void onConnect(WSSession session) {

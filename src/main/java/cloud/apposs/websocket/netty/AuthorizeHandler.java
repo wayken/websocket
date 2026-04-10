@@ -4,7 +4,7 @@ import cloud.apposs.logger.Logger;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.WSSessionBox;
-import cloud.apposs.websocket.WebSocketContextHolder;
+import cloud.apposs.websocket.WebSocketManager;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.protocol.HandshakeData;
@@ -29,13 +29,13 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     private final WSConfig configuration;
 
-    private final WebSocketContextHolder contextHolder;
+    private final WebSocketManager manager;
 
     private final WSSessionBox sessionBox;
 
-    public AuthorizeHandler(WSConfig configuration, WebSocketContextHolder contextHolder, WSSessionBox sessionBox) {
+    public AuthorizeHandler(WSConfig configuration, WebSocketManager manager, WSSessionBox sessionBox) {
         this.configuration = configuration;
-        this.contextHolder = contextHolder;
+        this.manager = manager;
         this.sessionBox = sessionBox;
     }
 
@@ -43,7 +43,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(final ChannelHandlerContext context) throws Exception {
         // 定期检测客户端有没有进行WebSocket握手通讯，避免恶意空连接
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.PING_TIMEOUT, context.channel());
-        contextHolder.getScheduler().schedule(key, () -> {
+        manager.getScheduler().schedule(key, () -> {
             context.channel().close();
             if (Logger.isDebugEnabled()) {
                 Logger.debug("Client with ip %s opened channel but doesn't send any data! Channel closed!",
@@ -56,7 +56,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext context, Object message) throws Exception {
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.PING_TIMEOUT, context.channel());
-        contextHolder.getScheduler().cancel(key);
+        manager.getScheduler().cancel(key);
 
         if (message instanceof FullHttpRequest) {
             FullHttpRequest request = (FullHttpRequest) message;
@@ -68,7 +68,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
             }
 
             // 如果没有找到对应的命名空间则表示业务没有注释@ServerEndpoint对应的命名空间，拒绝连接
-            if (!contextHolder.getNamespacesHub().contains(path)) {
+            if (!manager.getNamespacesHub().contains(path)) {
                 HttpResponse response = new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.BAD_REQUEST);
                 channel.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
                 request.release();
@@ -106,7 +106,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
                 (InetSocketAddress) channel.remoteAddress(),
                 (InetSocketAddress) channel.localAddress(),
                 request.uri());
-        CommandarInterceptorSupport interceptorSupport = contextHolder.getCommandarInterceptorSupport();
+        CommandarInterceptorSupport interceptorSupport = manager.getCommandarInterceptorSupport();
         boolean isAuthSuccess = interceptorSupport.isAuthorized(handshakeData);
         if (!isAuthSuccess) {
             HttpResponse response = new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.UNAUTHORIZED);
@@ -116,8 +116,8 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
         }
         // 创建会话信息
         UUID sessionId = UUID.randomUUID();
-        Namespace namespace = contextHolder.getNamespacesHub().get(path);
-        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, sessionBox, handshakeData, context, contextHolder);
+        Namespace namespace = manager.getNamespacesHub().get(path);
+        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, sessionBox, handshakeData, context, manager);
         channel.attr(ChannelAttributeKey.SESSION).set(session);
         sessionBox.addSession(session);
         session.scheduleRenewal();

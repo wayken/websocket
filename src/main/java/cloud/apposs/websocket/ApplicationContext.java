@@ -4,13 +4,21 @@ import cloud.apposs.logger.Configuration;
 import cloud.apposs.logger.Logger;
 import cloud.apposs.util.StrUtil;
 import cloud.apposs.util.SystemInfo;
+import cloud.apposs.websocket.banner.Banner;
+import cloud.apposs.websocket.banner.WSBanner;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Properties;
 
 public abstract class ApplicationContext {
     // 全局配置
     private WSConfig config;
+
+    protected Banner.Mode bannerMode = Banner.Mode.CONSOLE;
+    protected static final Banner DEFAULT_BANNER = new WSBanner();
+    protected Banner banner = DEFAULT_BANNER;
 
     // 服务启动开始时间
     protected long appStartTime;
@@ -40,13 +48,20 @@ public abstract class ApplicationContext {
         return this;
     }
 
+    /**
+     * 设置Banner终端显示
+     */
+    public ApplicationContext setBanner(Banner banner) {
+        this.banner = banner;
+        return this;
+    }
+
     private void handleRunApplication() throws Exception {
         // 初始化日志
         handleInitLogger(config);
 
         // 输出BANNER信息
-        Banner banner = new Banner();
-        banner.printBanner(System.out);
+        handleInitBanner(bannerMode, banner, config.getCharset());
         handlePrintSysInfomation();
 
         // 开始启动WebSocket服务
@@ -66,6 +81,22 @@ public abstract class ApplicationContext {
         properties.put(Configuration.Prefix.FILE, config.getLogPath());
         properties.put(Configuration.Prefix.FORMAT, config.getLogFormat());
         Logger.config(properties);
+    }
+
+
+    /**
+     * 初始化BANNER输出
+     */
+    private void handleInitBanner(Banner.Mode bannerMode, Banner banner, String charset) throws Exception {
+        if (bannerMode != Banner.Mode.OFF) {
+            if (bannerMode == Banner.Mode.CONSOLE) {
+                banner.printBanner(System.out);
+            } else {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                banner.printBanner(new PrintStream(baos));
+                Logger.info(baos.toString(charset));
+            }
+        }
     }
 
     /**

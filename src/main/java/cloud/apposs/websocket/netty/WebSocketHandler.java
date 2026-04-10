@@ -4,7 +4,7 @@ import cloud.apposs.logger.Logger;
 import cloud.apposs.util.Pair;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
-import cloud.apposs.websocket.WebSocketContextHolder;
+import cloud.apposs.websocket.WebSocketManager;
 import cloud.apposs.websocket.protocol.AuthPacket;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.protocol.PacketDecoder;
@@ -28,11 +28,11 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
 
     private WebSocketServerHandshaker handshaker;
 
-    private final WebSocketContextHolder contextHolder;
+    private final WebSocketManager manager;
 
-    public WebSocketHandler(WSConfig configuration, WebSocketContextHolder contextHolder) {
+    public WebSocketHandler(WSConfig configuration, WebSocketManager manager) {
         this.configuration = configuration;
-        this.contextHolder = contextHolder;
+        this.manager = manager;
     }
 
     @Override
@@ -95,9 +95,9 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
         if (session != null) {
             session.onChannelDisconnect();
             try {
-                contextHolder.onDisconnect(session);
+                manager.onDisconnect(session);
             } catch (Throwable e) {
-                contextHolder.onError(session.getPath(), e);
+                manager.onError(session.getPath(), e);
             }
         }
         super.channelInactive(context);
@@ -115,7 +115,7 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
         WSSession session = context.channel().attr(ChannelAttributeKey.SESSION).get();
         // 有可能是握手失败导致的连接关闭，此时没有 WSSession
         if (session != null) {
-            if (!contextHolder.onError(session.getPath(), cause)) {
+            if (!manager.onError(session.getPath(), cause)) {
                 context.fireExceptionCaught(cause);
             }
             return;
@@ -131,13 +131,13 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
             Logger.debug("сlient %s handshake completed", sessionId);
         }
         try {
-            contextHolder.onConnect(session);
+            manager.onConnect(session);
         } catch (Throwable cause) {
             // 如果是方法调用中有异常，需要获取的是真正的业务异常
             if (cause instanceof InvocationTargetException) {
                 cause = ((InvocationTargetException) cause).getTargetException();
             }
-            if (!contextHolder.onError(session.getPath(), cause)) {
+            if (!manager.onError(session.getPath(), cause)) {
                 throw (Exception) cause;
             }
         }
@@ -164,7 +164,7 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
         }
         // 获取注解接口的 OnCommand 方法并执行方法回调
         Packet packet = packets.value();
-        contextHolder.onCommand(session, packet);
+        manager.onCommand(session, packet);
     }
 
     public void onDisConnect(ChannelHandlerContext context) throws Exception {

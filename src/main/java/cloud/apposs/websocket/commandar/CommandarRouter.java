@@ -6,10 +6,10 @@ import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.annotation.*;
 import cloud.apposs.websocket.protocol.JsonSupport;
+import cloud.apposs.websocket.util.Orders;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +68,7 @@ public final class CommandarRouter {
             if (!matchedParameterList.isEmpty()) {
                 jsonSupport.addCommandMapping(path, command, matchedParameterList);
             }
-            doSortByOrderAnnotation(commandarList);
+            Orders.sortByOrderAnnotation(commandarList);
             Logger.info("Mapped %s on %s", commandar, doOutputMethod(commandar.getMethod()));
         }
         return true;
@@ -122,19 +122,6 @@ public final class CommandarRouter {
             return String.valueOf(annotation.value());
         }
         return null;
-    }
-
-    /**
-     * 根据Order注解进行列表的排序
-     */
-    private void doSortByOrderAnnotation(List<Commandar> compareList) {
-        Collections.sort(compareList, (object1, object2) -> {
-            Order order1 = object1.getMethod().getAnnotation(Order.class);
-            Order order2 = object2.getMethod().getAnnotation(Order.class);
-            int order1Value = order1 == null ? 0 : order1.value();
-            int order2Value = order2 == null ? 0 : order2.value();
-            return order1Value - order2Value;
-        });
     }
 
     /**

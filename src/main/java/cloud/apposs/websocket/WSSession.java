@@ -37,7 +37,7 @@ public abstract class WSSession {
     // 会话握手数据
     protected final HandshakeData handshakeData;
 
-    private final WebSocketContextHolder contextHolder;
+    private final WebSocketManager manager;
 
     // 当前会话请求存储的一些状态值
     private final Map<Object, Object> attributes = new ConcurrentHashMap<>(1);
@@ -49,7 +49,7 @@ public abstract class WSSession {
             Namespace namespace,
             WSSessionBox sessionBox,
             HandshakeData handshakeData,
-            WebSocketContextHolder contextHolder
+            WebSocketManager manager
     ) {
         this.sessionId = sessionId;
         this.path = path;
@@ -57,7 +57,7 @@ public abstract class WSSession {
         this.namespace = namespace;
         this.sessionBox = sessionBox;
         this.handshakeData = handshakeData;
-        this.contextHolder = contextHolder;
+        this.manager = manager;
         namespace.addSession(this);
     }
 
@@ -287,7 +287,7 @@ public abstract class WSSession {
         cancelRenewal();
         // 创建新的分布式服务注册续期检测任务
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.RENEWAL, sessionId);
-        contextHolder.getScheduler().schedule(key, () -> {
+        manager.getScheduler().schedule(key, () -> {
             WSSession session = sessionBox.getSession(sessionId);
             if (session != null && session.isChannelOpen()) {
                 IPubSubService pubSubService = namespace.getPubSubService();
@@ -299,7 +299,7 @@ public abstract class WSSession {
 
     public void cancelRenewal() {
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.RENEWAL, sessionId);
-        contextHolder.getScheduler().cancel(key);
+        manager.getScheduler().cancel(key);
     }
 
     /**

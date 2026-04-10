@@ -41,6 +41,14 @@ public class WebSocketApplication {
         return new NettyApplicationContext(config).run(primarySource, args);
     }
 
+    public static ApplicationContext build(Class<?> primarySource, String... args) throws Exception {
+        return build(generateConfiguration(primarySource, args));
+    }
+
+    public static ApplicationContext build(WSConfig config) throws Exception {
+        return new NettyApplicationContext(config);
+    }
+
     public static WSConfig generateConfiguration(Class<?> primarySource, String... args) throws Exception {
         return generateConfiguration(primarySource, WebSocketConstants.DEFAULT_HOST, WebSocketConstants.DEFAULT_PORT, args);
     }

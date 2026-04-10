@@ -20,9 +20,9 @@ import cloud.apposs.websocket.validator.Validator;
 import java.util.List;
 
 /**
- * SocketIO全局上下文，用于保存全局共享对象，如命名空间，拦截器等
+ * WebSocket全局上下文管理，用于保存全局共享对象，如命名空间，拦截器等
  */
-public final class WebSocketContextHolder {
+public final class WebSocketManager {
     private final NamespacesHub namespacesHub;
 
     private final CancelableScheduler scheduler;
@@ -35,7 +35,7 @@ public final class WebSocketContextHolder {
 
     private final CommandarInterceptorSupport commandarInterceptorSupport;
 
-    public WebSocketContextHolder(
+    public WebSocketManager(
             NamespacesHub namespacesHub,
             CancelableScheduler scheduler,
             IDistributedService distributedService,

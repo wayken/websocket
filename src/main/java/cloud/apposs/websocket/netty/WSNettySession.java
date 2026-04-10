@@ -3,7 +3,7 @@ package cloud.apposs.websocket.netty;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.WSSessionBox;
-import cloud.apposs.websocket.WebSocketContextHolder;
+import cloud.apposs.websocket.WebSocketManager;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.protocol.HandshakeData;
 import cloud.apposs.websocket.protocol.Packet;
@@ -28,9 +28,9 @@ public class WSNettySession extends WSSession  {
             WSSessionBox sessionBox,
             HandshakeData handshakeData,
             ChannelHandlerContext context,
-            WebSocketContextHolder contextHolder
+            WebSocketManager manager
     ) {
-        super(sessionId, path, configuration, namespace, sessionBox, handshakeData, contextHolder);
+        super(sessionId, path, configuration, namespace, sessionBox, handshakeData, manager);
         this.context = context;
     }
 
