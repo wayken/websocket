@@ -12,12 +12,11 @@ import cloud.apposs.websocket.annotation.ServerEndpoint;
 public class ProductEndpoint {
     private final WSConfig config;
 
-    @Autowired
     private WSContextHolder holder;
 
-    @Autowired
-    public ProductEndpoint(WSConfig config) {
+    public ProductEndpoint(WSConfig config, WSContextHolder holder) {
         this.config = config;
+        this.holder = holder;
     }
 
     @OnConnect

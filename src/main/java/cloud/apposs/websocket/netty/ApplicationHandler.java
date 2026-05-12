@@ -143,5 +143,6 @@ public class ApplicationHandler {
             pubsubService.unregisterSession(session.getNamespace().getName(), sessionId);
         }
         distributedService.shutdown();
+        beanFactory.destroy();
     }
 }

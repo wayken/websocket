@@ -83,7 +83,6 @@ public abstract class ApplicationContext {
         Logger.config(properties);
     }
 
-
     /**
      * 初始化BANNER输出
      */
