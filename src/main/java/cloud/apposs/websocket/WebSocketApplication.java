@@ -66,8 +66,7 @@ public class WebSocketApplication {
         return generateConfiguration(primarySource, new WSConfig(), bindHost, bindPort, args);
     }
 
-    public static WSConfig generateConfiguration(Class<?> primarySource, WSConfig config,
-                                                     String bindHost, int bindPort, String... args) throws Exception {
+    public static WSConfig generateConfiguration(Class<?> primarySource, WSConfig config, String bindHost, int bindPort, String... args) throws Exception {
         String configFile = WebSocketConstants.DEFAULT_CONFIG_FILE;
         // 判断是否从命令行中传递配置文件路径
         GetOpt option = new GetOpt(args);

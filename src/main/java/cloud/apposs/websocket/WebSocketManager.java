@@ -11,6 +11,7 @@ import cloud.apposs.websocket.commandar.ParameterResolver;
 import cloud.apposs.websocket.distributed.IDistributedService;
 import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
+import cloud.apposs.websocket.listener.CommandarListenerSupport;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.Packet;
@@ -35,13 +36,16 @@ public final class WebSocketManager {
 
     private final CommandarInterceptorSupport commandarInterceptorSupport;
 
+    private final CommandarListenerSupport commandarListenerSupport;
+
     public WebSocketManager(
             NamespacesHub namespacesHub,
             CancelableScheduler scheduler,
             IDistributedService distributedService,
             CommandarRouter commandarRouter,
             CommandarInvocation commandarInvocation,
-            CommandarInterceptorSupport commandarInterceptorSupport
+            CommandarInterceptorSupport commandarInterceptorSupport,
+            CommandarListenerSupport commandarListenerSupport
     ) {
         this.namespacesHub = namespacesHub;
         this.scheduler = scheduler;
@@ -49,6 +53,7 @@ public final class WebSocketManager {
         this.commandarRouter = commandarRouter;
         this.commandarInvocation = commandarInvocation;
         this.commandarInterceptorSupport = commandarInterceptorSupport;
+        this.commandarListenerSupport = commandarListenerSupport;
     }
 
     public NamespacesHub getNamespacesHub() {
@@ -61,6 +66,10 @@ public final class WebSocketManager {
 
     public CommandarInterceptorSupport getCommandarInterceptorSupport() {
         return commandarInterceptorSupport;
+    }
+
+    public CommandarListenerSupport getCommandarListenerSupport() {
+        return commandarListenerSupport;
     }
 
     public CommandarRouter getCommandarRouter() {
@@ -91,8 +100,10 @@ public final class WebSocketManager {
             return;
         }
         for (Commandar commandar : onCommandList) {
+            List<Object> parameterArgument = packet.getParameter().getArguments();
+            commandarListenerSupport.commandarStart(commandar, session, parameterArgument);
             // 进行消息事件拦截器拦截，如果返回false则不再进行后续的指令匹配处理
-            if (!commandarInterceptorSupport.onCommand(commandar, session, packet.getParameter().getArguments())) {
+            if (!commandarInterceptorSupport.onCommand(commandar, session, parameterArgument)) {
                 return;
             }
             Throwable cause = null;
@@ -112,6 +123,7 @@ public final class WebSocketManager {
                 throw ex;
             } finally {
                 commandarInterceptorSupport.afterCompletion(commandar, session, cause);
+                commandarListenerSupport.commandarCompletion(commandar, session, cause);
             }
         }
     }

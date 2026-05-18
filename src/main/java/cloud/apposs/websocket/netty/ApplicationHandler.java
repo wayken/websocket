@@ -4,6 +4,7 @@ import cloud.apposs.ioc.BeanFactory;
 import cloud.apposs.util.StrUtil;
 import cloud.apposs.websocket.*;
 import cloud.apposs.websocket.annotation.ServerEndpoint;
+import cloud.apposs.websocket.commandar.Commandar;
 import cloud.apposs.websocket.commandar.CommandarInvocation;
 import cloud.apposs.websocket.commandar.CommandarRouter;
 import cloud.apposs.websocket.distributed.DistributedServiceFactory;
@@ -11,6 +12,8 @@ import cloud.apposs.websocket.distributed.IDistributedService;
 import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.interceptor.CommandarInterceptor;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
+import cloud.apposs.websocket.listener.CommandarListener;
+import cloud.apposs.websocket.listener.CommandarListenerSupport;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.JsonSupport;
 import cloud.apposs.websocket.protocol.JsonSupportWrapper;
@@ -34,6 +37,8 @@ public class ApplicationHandler {
     private final CommandarInvocation commandarInvocation;
 
     private final CommandarInterceptorSupport commandarInterceptorSupport = new CommandarInterceptorSupport();
+
+    private final CommandarListenerSupport commandarListenerSupport = new CommandarListenerSupport();
 
     private final WSSessionBox sessionBox = new WSSessionBox();
 
@@ -112,6 +117,12 @@ public class ApplicationHandler {
                 commandarRouter.addCommandar(endpointClass, method);
             }
         }
+        // 初始化容器监听服务
+        List<CommandarListener> commandarListeners = beanFactory.getBeanHierarchyList(CommandarListener.class);
+        for (CommandarListener listener : commandarListeners) {
+            listener.initialize(configuration);
+            commandarListenerSupport.addListener(listener);
+        }
         // 初始化拦截器
         List<CommandarInterceptor> interceptorList = beanFactory.getBeanHierarchyList(CommandarInterceptor.class);
         // 对拦截器进行排序后添加
@@ -119,7 +130,8 @@ public class ApplicationHandler {
         for (CommandarInterceptor interceptor : interceptorList) {
             commandarInterceptorSupport.addInterceptor(interceptor);
         }
-        manager = new WebSocketManager(namespacesHub, scheduler, distributedService, commandarRouter, commandarInvocation, commandarInterceptorSupport);
+        manager = new WebSocketManager(namespacesHub, scheduler, distributedService,
+                commandarRouter, commandarInvocation, commandarInterceptorSupport, commandarListenerSupport);
         pipeline = new SocketIOChannelInitializer(manager, sessionBox);
         pipeline.initialize(configuration);
     }

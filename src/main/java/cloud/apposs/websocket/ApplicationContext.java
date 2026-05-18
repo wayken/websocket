@@ -2,6 +2,7 @@ package cloud.apposs.websocket;
 
 import cloud.apposs.logger.Configuration;
 import cloud.apposs.logger.Logger;
+import cloud.apposs.util.ReflectUtil;
 import cloud.apposs.util.StrUtil;
 import cloud.apposs.util.SystemInfo;
 import cloud.apposs.websocket.banner.Banner;
@@ -9,6 +10,7 @@ import cloud.apposs.websocket.banner.WSBanner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -57,23 +59,46 @@ public abstract class ApplicationContext {
     }
 
     private void handleRunApplication() throws Exception {
+        // 初始化配置
+        handleInitConfig(config);
         // 初始化日志
         handleInitLogger(config);
-
         // 输出BANNER信息
         handleInitBanner(bannerMode, banner, config.getCharset());
         handlePrintSysInfomation();
-
         // 开始启动WebSocket服务
         handleStartWebSocketServer(config);
-
         // 注册服务被kill时的回调
         handleShutdownHookRegister();
     }
 
-    /**
-     * 初始化日志
-     */
+    private void handleInitConfig(WSConfig config) {
+        if (StrUtil.isEmpty(config.getHost())) {
+            config.setHost(WebSocketConstants.DEFAULT_HOST);
+        }
+        if (config.getPort() <= 0) {
+            config.setPort(WebSocketConstants.DEFAULT_PORT);
+        }
+        String basePackage = config.getBasePackage();
+        // 是否配置中不存在框架中的包，则需要配置进去，方便扫描框架中的各种组件包
+        if (!StrUtil.isEmpty(basePackage)) {
+            String bootorPackage = ReflectUtil.getPackage(ApplicationContext.class);
+            String[] basePackageSplit = basePackage.split(",");
+            List<String> basePackageList = new ArrayList<String>(basePackageSplit.length);
+            for (int i = 0; i < basePackageSplit.length; i++) {
+                basePackageList.add(basePackageSplit[i].trim());
+            }
+            if (!basePackageList.contains(bootorPackage + ".interceptor")) {
+                basePackageList.add(bootorPackage + ".interceptor");
+            }
+            if (!basePackageList.contains(bootorPackage + ".listener")) {
+                basePackageList.add(bootorPackage + ".listener");
+            }
+            basePackage = StrUtil.joinArrayString(basePackageList, ",");
+        }
+        config.setBasePackage(basePackage);
+    }
+
     private void handleInitLogger(WSConfig config) {
         Properties properties = new Properties();
         properties.put(Configuration.Prefix.APPENDER, config.getLogAppender());
@@ -83,9 +108,6 @@ public abstract class ApplicationContext {
         Logger.config(properties);
     }
 
-    /**
-     * 初始化BANNER输出
-     */
     private void handleInitBanner(Banner.Mode bannerMode, Banner banner, String charset) throws Exception {
         if (bannerMode != Banner.Mode.OFF) {
             if (bannerMode == Banner.Mode.CONSOLE) {
@@ -98,9 +120,6 @@ public abstract class ApplicationContext {
         }
     }
 
-    /**
-     * 输出系统信息
-     */
     private void handlePrintSysInfomation() {
         if (config.isShowSysInfo()) {
             SystemInfo OS = SystemInfo.getInstance();

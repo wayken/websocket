@@ -73,10 +73,10 @@ public class CommandarInterceptorSupport {
      * 请求结束时，无论有业务方逻辑处理有没有成功，从最后一个拦截器开始拦截
      * 一般用于性能监控中在此记录结束时间并输出消耗时间，还可以进行一些资源清理
      */
-    public void afterCompletion(Commandar commandar, WSSession session, Throwable throwable) {
+    public void afterCompletion(Commandar commandar, WSSession session, Throwable cause) {
         for (int i = interceptorList.size() - 1; i >= 0; i--) {
             CommandarInterceptor interceptor = interceptorList.get(i);
-            interceptor.afterCompletion(commandar, session, throwable);
+            interceptor.afterCompletion(commandar, session, cause);
         }
     }
 }

@@ -18,6 +18,6 @@ public class CommandarInterceptorAdapter implements CommandarInterceptor {
 	}
 
 	@Override
-	public void afterCompletion(Commandar commandar, WSSession session, Throwable throwable) {
+	public void afterCompletion(Commandar commandar, WSSession session, Throwable cause) {
 	}
 }

@@ -162,6 +162,12 @@ public class WSConfig {
     // 日志输出模板
     private String logFormat = Logger.DEFAULT_LOG_FORMAT;
 
+    // 是否输出请求指令日志
+    protected boolean commandLogEnable = true;
+
+    // 指令请求日志输出格式
+    protected String commandLogFormat = "$commandar $command_path $command_method $command_name $session_id $remote_addr:$remote_port $time(ms)";
+
     // 业务自定义配置
     protected Object options;
 
@@ -519,6 +525,22 @@ public class WSConfig {
 
     public void setLogFormat(String logFormat) {
         this.logFormat = logFormat;
+    }
+
+    public boolean isCommandLogEnable() {
+        return commandLogEnable;
+    }
+
+    public void setCommandLogEnable(boolean commandLogEnable) {
+        this.commandLogEnable = commandLogEnable;
+    }
+
+    public String getCommandLogFormat() {
+        return commandLogFormat;
+    }
+
+    public void setCommandLogFormat(String commandLogFormat) {
+        this.commandLogFormat = commandLogFormat;
     }
 
     public Object getOptions() {

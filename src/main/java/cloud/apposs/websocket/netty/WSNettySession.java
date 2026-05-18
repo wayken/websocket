@@ -12,6 +12,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -25,12 +26,13 @@ public class WSNettySession extends WSSession  {
             String path,
             WSConfig configuration,
             Namespace namespace,
+            Map<String, String> headers,
             WSSessionBox sessionBox,
             HandshakeData handshakeData,
             ChannelHandlerContext context,
             WebSocketManager manager
     ) {
-        super(sessionId, path, configuration, namespace, sessionBox, handshakeData, manager);
+        super(sessionId, path, configuration, namespace, headers, sessionBox, handshakeData, manager);
         this.context = context;
     }
 

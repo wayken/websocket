@@ -117,7 +117,11 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
         // 创建会话信息
         UUID sessionId = UUID.randomUUID();
         Namespace namespace = manager.getNamespacesHub().get(path);
-        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, sessionBox, handshakeData, context, manager);
+        Map<String, String> formatHeaders = new HashMap<>();
+        for (Map.Entry<String, String> header : request.headers()) {
+            formatHeaders.put(header.getKey(), header.getValue());
+        }
+        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, formatHeaders, sessionBox, handshakeData, context, manager);
         channel.attr(ChannelAttributeKey.SESSION).set(session);
         sessionBox.addSession(session);
         session.scheduleRenewal();

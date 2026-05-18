@@ -10,14 +10,10 @@ import java.lang.reflect.Method;
 public class Commandar {
     private final RouterPath path;
 
-    /**
-     * Class类
-     */
+    // Class类
     private final Class<?> clazz;
 
-    /**
-     * 方法反射
-     */
+    // 方法反射
     private final Method method;
 
     public Commandar(RouterPath path, Class<?> clazz, Method method) {

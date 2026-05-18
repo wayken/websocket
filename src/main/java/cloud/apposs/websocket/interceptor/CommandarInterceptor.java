@@ -40,7 +40,7 @@ public interface CommandarInterceptor {
      *
      * @param commandar 指令体
      * @param session   会话信息
-     * @param throwable 如果业务调用产生了异常，则该值不为空
+     * @param cause     如果业务调用产生了异常，则该值不为空
      */
-    void afterCompletion(Commandar commandar, WSSession session, Throwable throwable);
+    void afterCompletion(Commandar commandar, WSSession session, Throwable cause);
 }

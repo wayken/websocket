@@ -1,5 +1,6 @@
 package cloud.apposs.websocket;
 
+import cloud.apposs.util.StrUtil;
 import cloud.apposs.websocket.broadcast.BroadcastOperations;
 import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.namespace.Namespace;
@@ -31,13 +32,20 @@ public abstract class WSSession {
     // 当前会话所属的命名空间
     protected final Namespace namespace;
 
+    // 会话请求头信息，包含客户端发送的所有HTTP头部数据
+    protected final Map<String, String> headers;
+
     // 会话集，用于管理所有会话
     protected final WSSessionBox sessionBox;
 
     // 会话握手数据
     protected final HandshakeData handshakeData;
 
+    // 全局上下文管理
     private final WebSocketManager manager;
+
+    // 远程主机地址，通常从请求头中获取，如 Host 字段
+    private String remoteHost;
 
     // 当前会话请求存储的一些状态值
     private final Map<Object, Object> attributes = new ConcurrentHashMap<>(1);
@@ -47,6 +55,7 @@ public abstract class WSSession {
             String path,
             WSConfig configuration,
             Namespace namespace,
+            Map<String, String> headers,
             WSSessionBox sessionBox,
             HandshakeData handshakeData,
             WebSocketManager manager
@@ -55,6 +64,7 @@ public abstract class WSSession {
         this.path = path;
         this.configuration = configuration;
         this.namespace = namespace;
+        this.headers = headers;
         this.sessionBox = sessionBox;
         this.handshakeData = handshakeData;
         this.manager = manager;
@@ -77,12 +87,38 @@ public abstract class WSSession {
         return namespace;
     }
 
+    public Map<String, String> getHeaders() {
+        return headers;
+    }
+
+    public String getHeader(String key) {
+        return headers.get(key);
+    }
+
+    public String getHeader(String key, boolean ignoreCase) {
+        if (ignoreCase) {
+            for (String k : headers.keySet()) {
+                if (k.equalsIgnoreCase(k)) {
+                    return headers.get(k);
+                }
+            }
+        }
+        return headers.get(key);
+    }
+
     public HandshakeData getHandshakeData() {
         return handshakeData;
     }
 
     public InetSocketAddress getRemoteAddress() {
         return handshakeData.getRemoteAddress();
+    }
+
+    public String getRemoteHost() {
+        if (StrUtil.isEmpty(remoteHost)) {
+            remoteHost = getHeader("host", true);
+        }
+        return remoteHost;
     }
 
     public InetSocketAddress getLocalAddress() {
