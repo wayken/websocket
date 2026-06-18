@@ -54,6 +54,12 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
+            <groupId>cloud.apposs</groupId>
+            <artifactId>teambeit-rest</artifactId>
+            <version>${cloud.apposs.rest.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
             <scope>compile</scope>

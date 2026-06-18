@@ -1,6 +1,9 @@
 package cloud.apposs.websocket.netty;
 
+import cloud.apposs.rest.Restful;
 import cloud.apposs.websocket.WSConfig;
+import cloud.apposs.websocket.WSHttpRequest;
+import cloud.apposs.websocket.WSHttpResponse;
 import cloud.apposs.websocket.WSSessionBox;
 import cloud.apposs.websocket.WebSocketManager;
 import io.netty.channel.Channel;
@@ -18,6 +21,7 @@ import java.security.KeyStore;
  */
 public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
     public static final String SSL_HANDLER = "ssl";
+    public static final String HTTP_REQUEST_HANDLER = "httpRequestHandler";
     public static final String AUTHORIZE_HANDLER = "authorizeHandler";
     public static final String HTTP_REQUEST_DECODER = "httpDecoder";
     public static final String HTTP_ENCODER = "httpEncoder";
@@ -31,6 +35,8 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
     private WSConfig configuration;
 
     private AuthorizeHandler authorizeHandler;
+
+    private HttpRequestHandler httpRequestHandler;
 
     private WebSocketHandler webSocketHandler;
 
@@ -47,7 +53,8 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
         this.sessionBox = sessionBox;
     }
 
-    public SocketIOChannelInitializer initialize(WSConfig configuration) throws Exception {
+    public SocketIOChannelInitializer initialize(WSConfig configuration,
+                                                   Restful<WSHttpRequest, WSHttpResponse> restful) throws Exception {
         this.configuration = configuration;
         boolean isSsl = configuration.getKeyStore() != null;
         if (isSsl) {
@@ -61,6 +68,8 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
         this.authorizeHandler = new AuthorizeHandler(configuration, manager, sessionBox);
         this.webSocketHandler = new WebSocketHandler(configuration, manager);
         this.packetEncodeHandler = new PacketEncodeHandler();
+        NettyHandlerProcess handlerProcess = new NettyHandlerProcess();
+        this.httpRequestHandler = new HttpRequestHandler(restful, handlerProcess);
         return this;
     }
 
@@ -115,6 +124,7 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
         if (configuration.isHttpCompression()) {
             pipeline.addLast(HTTP_COMPRESSION, new HttpContentCompressor());
         }
+        pipeline.addLast(HTTP_REQUEST_HANDLER, httpRequestHandler);
         pipeline.addLast(AUTHORIZE_HANDLER, authorizeHandler);
         if (configuration.isWebsocketCompression()) {
             pipeline.addLast(WEB_SOCKET_TRANSPORT_COMPRESSION, new WebSocketServerCompressionHandler());

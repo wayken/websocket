@@ -16,8 +16,10 @@ import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.scheduler.CancelableScheduler;
-import cloud.apposs.websocket.validator.Validator;
+import cloud.apposs.rest.validator.IChecker;
+import cloud.apposs.rest.validator.Validator;
 
+import java.lang.annotation.Annotation;
 import java.util.List;
 
 /**
@@ -115,7 +117,7 @@ public final class WebSocketManager {
                     if (argument == null || ParameterResolver.isSystemParameter(argument.getClass())) {
                         continue;
                     }
-                    Validator.validate(commandar, argument);
+                    handleArgumentValidate(argument);
                 }
                 commandarInvocation.invoke(commandar, arguments);
             } catch (Throwable ex) {
@@ -154,5 +156,40 @@ public final class WebSocketManager {
             }
         }
         return onCommandList != null && !onCommandList.isEmpty();
+    }
+
+    private void handleArgumentValidate(Object model) {
+        if (model == null) {
+            return;
+        }
+        Class<?> clazz = model.getClass();
+        while (clazz != null && clazz != Object.class) {
+            for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
+                Annotation[] annotations = field.getDeclaredAnnotations();
+                if (annotations == null || annotations.length == 0) {
+                    continue;
+                }
+                for (Annotation annotation : annotations) {
+                    IChecker checker = Validator.getChecker(annotation.annotationType());
+                    if (checker == null) {
+                        continue;
+                    }
+                    boolean accessible = field.isAccessible();
+                    try {
+                        field.setAccessible(true);
+                        Object value = field.get(model);
+                        Object result = checker.check(field, annotation, value);
+                        field.set(model, result);
+                    } catch (IllegalArgumentException e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException("field " + field.getName() + " validation failed: " + e.getMessage(), e);
+                    } finally {
+                        field.setAccessible(accessible);
+                    }
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
     }
 }

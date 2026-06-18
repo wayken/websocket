@@ -1,6 +1,6 @@
 package cloud.apposs.websocket.sample.bean;
 
-import cloud.apposs.websocket.validator.checker.NotBlank;
+import cloud.apposs.rest.validator.checker.NotBlank;
 
 /**
  * 客户端发送的消息示例
@@ -34,6 +34,7 @@ public class ChatObject {
     public String getMessage() {
         return message;
     }
+
     public void setMessage(String message) {
         this.message = message;
     }

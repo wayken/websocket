@@ -1,10 +1,11 @@
 package cloud.apposs.websocket.netty;
 
 import cloud.apposs.ioc.BeanFactory;
+import cloud.apposs.rest.RestConfig;
+import cloud.apposs.rest.Restful;
 import cloud.apposs.util.StrUtil;
 import cloud.apposs.websocket.*;
 import cloud.apposs.websocket.annotation.ServerEndpoint;
-import cloud.apposs.websocket.commandar.Commandar;
 import cloud.apposs.websocket.commandar.CommandarInvocation;
 import cloud.apposs.websocket.commandar.CommandarRouter;
 import cloud.apposs.websocket.distributed.DistributedServiceFactory;
@@ -49,6 +50,9 @@ public class ApplicationHandler {
     private final IDistributedService distributedService;
 
     private final WebSocketManager manager;
+
+    // Restful MVC框架，用于HTTP协议的请求处理
+    private final Restful<WSHttpRequest, WSHttpResponse> restful;
 
     // Netty IO处理器初始化
     private final SocketIOChannelInitializer pipeline;
@@ -132,8 +136,21 @@ public class ApplicationHandler {
         }
         manager = new WebSocketManager(namespacesHub, scheduler, distributedService,
                 commandarRouter, commandarInvocation, commandarInterceptorSupport, commandarListenerSupport);
+        // 初始化Restful MVC框架，用于HTTP协议处理
+        RestConfig restConfig = new RestConfig();
+        restConfig.setBasePackage(basePackages);
+        restful = new Restful<WSHttpRequest, WSHttpResponse>(restConfig);
+        // 将WSConfig注入Restful的IOC容器，方便HTTP Action通过构造函数注入
+        restful.getBeanFactory().addBean(configuration);
+        restful.getBeanFactory().addBean(contextHolder);
+        restful.getBeanFactory().addBean(namespacesHub);
+        restful.addParameterResolver(new NettyParameterResolver());
+        restful.addParameterResolver(new NettyVariableParameterResolver());
+        restful.addParameterResolver(new NettyModelParameterResolver());
+        restful.addViewResolver(new NettyViewResolver().build(restConfig));
+        restful.initialize();
         pipeline = new SocketIOChannelInitializer(manager, sessionBox);
-        pipeline.initialize(configuration);
+        pipeline.initialize(configuration, restful);
     }
 
     public SocketIOChannelInitializer getPipeline() {
@@ -156,5 +173,8 @@ public class ApplicationHandler {
         }
         distributedService.shutdown();
         beanFactory.destroy();
+        if (restful != null) {
+            restful.destroy();
+        }
     }
 }
