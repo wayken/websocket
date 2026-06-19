@@ -7,6 +7,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.QueryStringDecoder;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -35,6 +36,14 @@ public class NettyWSHttpRequest implements WSHttpRequest {
     @Override
     public SocketAddress getRemoteAddr() {
         return remoteAddr;
+    }
+
+    @Override
+    public String getRemoteHost() {
+        if (remoteAddr instanceof InetSocketAddress) {
+            return ((InetSocketAddress) remoteAddr).getAddress().getHostAddress();
+        }
+        return remoteAddr != null ? remoteAddr.toString() : null;
     }
 
     @Override

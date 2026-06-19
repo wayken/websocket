@@ -15,6 +15,11 @@ public interface WSHttpRequest {
     SocketAddress getRemoteAddr();
 
     /**
+     * 获取远程主机IP地址
+     */
+    String getRemoteHost();
+
+    /**
      * 获取请求路径（不含查询参数）
      */
     String getPath();
