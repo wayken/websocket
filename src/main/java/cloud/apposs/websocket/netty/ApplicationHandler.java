@@ -139,7 +139,7 @@ public class ApplicationHandler {
         // 初始化Restful MVC框架，用于HTTP协议处理
         RestConfig restConfig = new RestConfig();
         restConfig.setBasePackage(basePackages);
-        restful = new Restful<WSHttpRequest, WSHttpResponse>(restConfig);
+        restful = new Restful<WSHttpRequest, WSHttpResponse>(restConfig, beanFactory);
         // 将WSConfig注入Restful的IOC容器，方便HTTP Action通过构造函数注入
         restful.getBeanFactory().addBean(configuration);
         restful.getBeanFactory().addBean(contextHolder);
