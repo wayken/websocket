@@ -44,7 +44,7 @@ public final class NettyApplicationContext extends ApplicationContext {
             this.workerGroup = new NioEventLoopGroup(configuration.getWorkerCount());
             channelClass = NioServerSocketChannel.class;
         }
-        application = new ApplicationHandler(configuration);
+        this.application = new ApplicationHandler(configuration);
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(channelClass)

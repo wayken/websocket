@@ -13,6 +13,8 @@ import cloud.apposs.websocket.distributed.IDistributedService;
 import cloud.apposs.websocket.distributed.pubsub.IPubSubService;
 import cloud.apposs.websocket.interceptor.CommandarInterceptor;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
+import cloud.apposs.websocket.listener.ApplicationListener;
+import cloud.apposs.websocket.listener.ApplicationListenerSupport;
 import cloud.apposs.websocket.listener.CommandarListener;
 import cloud.apposs.websocket.listener.CommandarListenerSupport;
 import cloud.apposs.websocket.namespace.NamespacesHub;
@@ -50,6 +52,9 @@ public class ApplicationHandler {
     private final IDistributedService distributedService;
 
     private final WebSocketManager manager;
+
+    // 框架监听服务管理
+    private final ApplicationListenerSupport applicationListenerSupport = new ApplicationListenerSupport();
 
     // Restful MVC框架，用于HTTP协议的请求处理
     private final Restful<WSHttpRequest, WSHttpResponse> restful;
@@ -127,6 +132,11 @@ public class ApplicationHandler {
             listener.initialize(configuration);
             commandarListenerSupport.addListener(listener);
         }
+        List<ApplicationListener> appListenerList = beanFactory.getBeanHierarchyList(ApplicationListener.class);
+        for (ApplicationListener listener : appListenerList) {
+            listener.onInitialize(configuration);
+            applicationListenerSupport.addListener(listener);
+        }
         // 初始化拦截器
         List<CommandarInterceptor> interceptorList = beanFactory.getBeanHierarchyList(CommandarInterceptor.class);
         // 对拦截器进行排序后添加
@@ -151,6 +161,7 @@ public class ApplicationHandler {
         restful.initialize();
         pipeline = new SocketIOChannelInitializer(manager, sessionBox);
         pipeline.initialize(configuration, restful);
+        applicationListenerSupport.onStartup(configuration);
     }
 
     public SocketIOChannelInitializer getPipeline() {
@@ -176,5 +187,6 @@ public class ApplicationHandler {
         if (restful != null) {
             restful.destroy();
         }
+        applicationListenerSupport.onShutdown();
     }
 }

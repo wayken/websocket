@@ -19,7 +19,7 @@ public class NettyViewResolver implements ViewResolver<WSHttpRequest, WSHttpResp
     private Charset charset = Charset.forName("UTF-8");
 
     @Override
-    public ViewResolver build(RestConfig config) {
+    public ViewResolver<WSHttpRequest, WSHttpResponse> build(RestConfig config) {
         if (config != null && config.getCharset() != null) {
             this.charset = Charset.forName(config.getCharset());
         }
