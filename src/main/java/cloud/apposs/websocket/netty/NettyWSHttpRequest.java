@@ -1,12 +1,19 @@
 package cloud.apposs.websocket.netty;
 
+import cloud.apposs.util.MediaType;
 import cloud.apposs.util.Param;
 import cloud.apposs.websocket.WSHttpRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.multipart.Attribute;
+import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -22,11 +29,24 @@ public class NettyWSHttpRequest implements WSHttpRequest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final FullHttpRequest request;
-    private final SocketAddress remoteAddr;
-    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
-    private Map<String, String> parameters;
-    private Param bodyParam;
+
     private String path;
+
+    private final SocketAddress remoteAddr;
+
+    /**
+     * 表单字段数据，支持GET/POST/FORM-URL/FORM-DATA-FIELD
+     */
+    private Map<String, String> parameters;
+
+    /**
+     * 表单JOSN数据，
+     * application/json 类型的请求比较特殊，数据是一个JSON对象，所以无法单纯用parameters来储存
+     */
+    private Param bodyParam;
+
+
+    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 
     public NettyWSHttpRequest(FullHttpRequest request, SocketAddress remoteAddr) {
         this.request = request;
@@ -94,11 +114,27 @@ public class NettyWSHttpRequest implements WSHttpRequest {
     public Map<String, String> getParameters() {
         if (parameters == null) {
             parameters = new HashMap<>();
-            QueryStringDecoder decoder = new QueryStringDecoder(request.uri());
-            for (Map.Entry<String, List<String>> entry : decoder.parameters().entrySet()) {
-                List<String> values = entry.getValue();
-                if (values != null && !values.isEmpty()) {
-                    parameters.put(entry.getKey(), values.get(values.size() - 1));
+            if (request.method() == HttpMethod.GET) {
+                // URL 参数数据传递
+                QueryStringDecoder decoder = new QueryStringDecoder(request.uri());
+                Map<String, List<String>> paramList = decoder.parameters();
+                for(Map.Entry<String, List<String>> entry : paramList.entrySet()) {
+                    parameters.put(entry.getKey(), entry.getValue().get(0));
+                }
+            }
+            String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
+            if (MediaType.APPLICATION_FORM_URLENCODED.match(contentType)) {
+                // POST URL 表单数据提交
+                HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(new DefaultHttpDataFactory(false), request);
+                List<InterfaceHttpData> parmList = decoder.getBodyHttpDatas();
+                for (InterfaceHttpData data : parmList) {
+                    if (data.getHttpDataType() == InterfaceHttpData.HttpDataType.Attribute) {
+                        Attribute attribute = (Attribute) data;
+                        try {
+                            parameters.put(attribute.getName(), attribute.getValue());
+                        } catch (IOException e) {
+                        }
+                    }
                 }
             }
         }

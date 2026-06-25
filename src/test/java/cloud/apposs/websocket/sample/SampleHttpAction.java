@@ -5,6 +5,7 @@ import cloud.apposs.rest.annotation.Action;
 import cloud.apposs.rest.annotation.Request;
 import cloud.apposs.rest.annotation.Variable;
 import cloud.apposs.util.StandardResult;
+import cloud.apposs.websocket.WSHttpRequest;
 
 /**
  * 测试用HTTP Action，与WebSocket共用同一端口
@@ -22,7 +23,7 @@ public class SampleHttpAction {
     }
 
     @Request.Post("/api/echo")
-    public React<StandardResult> echo() {
+    public React<StandardResult> echo(WSHttpRequest request) {
         return React.just(StandardResult.success("echo"));
     }
 }

@@ -94,6 +94,9 @@ public abstract class ApplicationContext {
             if (!basePackageList.contains(bootorPackage + ".listener")) {
                 basePackageList.add(bootorPackage + ".listener");
             }
+            if (!basePackageList.contains(bootorPackage + ".resolver")) {
+                basePackageList.add(bootorPackage + ".resolver");
+            }
             basePackage = StrUtil.joinArrayString(basePackageList, ",");
         }
         config.setBasePackage(basePackage);

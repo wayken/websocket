@@ -1,4 +1,4 @@
-package cloud.apposs.websocket.netty;
+package cloud.apposs.websocket.resolver.parameter;
 
 import cloud.apposs.ioc.annotation.Component;
 import cloud.apposs.rest.annotation.Order;
@@ -7,6 +7,7 @@ import cloud.apposs.rest.parameter.Parameter;
 import cloud.apposs.util.Param;
 import cloud.apposs.websocket.WSHttpRequest;
 import cloud.apposs.websocket.WSHttpResponse;
+import cloud.apposs.websocket.netty.NettyHandlerProcess;
 
 import java.util.Map;
 
@@ -15,7 +16,7 @@ import java.util.Map;
  */
 @Order(1)
 @Component
-public class NettyModelParameterResolver extends BodyParameterResolver<WSHttpRequest, WSHttpResponse> {
+public class HttpModelParameterResolver extends BodyParameterResolver<WSHttpRequest, WSHttpResponse> {
     @Override
     public Param getParameterValues(Parameter parameter, WSHttpRequest request, WSHttpResponse response) throws Exception {
         Param param = new Param();

@@ -1,4 +1,4 @@
-package cloud.apposs.websocket.netty;
+package cloud.apposs.websocket.resolver.parameter;
 
 import cloud.apposs.ioc.annotation.Component;
 import cloud.apposs.rest.annotation.Order;
@@ -12,7 +12,7 @@ import cloud.apposs.websocket.WSHttpResponse;
  */
 @Component
 @Order(Integer.MIN_VALUE)
-public class NettyParameterResolver implements ParameterResolver<WSHttpRequest, WSHttpResponse> {
+public class HttpParameterResolver implements ParameterResolver<WSHttpRequest, WSHttpResponse> {
     @Override
     public boolean supportsParameter(Parameter parameter) {
         Class<?> type = parameter.getType();

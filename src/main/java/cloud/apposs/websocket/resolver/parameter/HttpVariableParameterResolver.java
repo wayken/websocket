@@ -1,4 +1,4 @@
-package cloud.apposs.websocket.netty;
+package cloud.apposs.websocket.resolver.parameter;
 
 import cloud.apposs.ioc.annotation.Component;
 import cloud.apposs.rest.annotation.Order;
@@ -7,6 +7,7 @@ import cloud.apposs.rest.parameter.Parameter;
 import cloud.apposs.rest.parameter.VariableParameterResolver;
 import cloud.apposs.websocket.WSHttpRequest;
 import cloud.apposs.websocket.WSHttpResponse;
+import cloud.apposs.websocket.netty.NettyHandlerProcess;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +17,7 @@ import java.util.Map;
  */
 @Order(0)
 @Component
-public class NettyVariableParameterResolver extends VariableParameterResolver<WSHttpRequest, WSHttpResponse> {
+public class HttpVariableParameterResolver extends VariableParameterResolver<WSHttpRequest, WSHttpResponse> {
     @Override
     public Map<String, String> getParameterVariables(Parameter parameter, WSHttpRequest request, WSHttpResponse response) {
         // 先从路径变量获取

@@ -154,10 +154,6 @@ public class ApplicationHandler {
         restful.getBeanFactory().addBean(configuration);
         restful.getBeanFactory().addBean(contextHolder);
         restful.getBeanFactory().addBean(namespacesHub);
-        restful.addParameterResolver(new NettyParameterResolver());
-        restful.addParameterResolver(new NettyVariableParameterResolver());
-        restful.addParameterResolver(new NettyModelParameterResolver());
-        restful.addViewResolver(new NettyViewResolver().build(restConfig));
         restful.initialize();
         pipeline = new SocketIOChannelInitializer(manager, sessionBox);
         pipeline.initialize(configuration, restful);
