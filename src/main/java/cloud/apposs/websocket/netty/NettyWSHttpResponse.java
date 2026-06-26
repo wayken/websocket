@@ -24,6 +24,11 @@ public class NettyWSHttpResponse implements WSHttpResponse {
     }
 
     @Override
+    public String getStatus() {
+        return String.valueOf(status.code());
+    }
+
+    @Override
     public void setStatus(int statusCode) {
         this.status = HttpResponseStatus.valueOf(statusCode);
     }

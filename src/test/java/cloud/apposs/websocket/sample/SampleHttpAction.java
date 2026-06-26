@@ -2,10 +2,12 @@ package cloud.apposs.websocket.sample;
 
 import cloud.apposs.react.React;
 import cloud.apposs.rest.annotation.Action;
+import cloud.apposs.rest.annotation.Model;
 import cloud.apposs.rest.annotation.Request;
 import cloud.apposs.rest.annotation.Variable;
 import cloud.apposs.util.StandardResult;
 import cloud.apposs.websocket.WSHttpRequest;
+import cloud.apposs.websocket.sample.model.HttpModel;
 
 /**
  * 测试用HTTP Action，与WebSocket共用同一端口
@@ -25,5 +27,13 @@ public class SampleHttpAction {
     @Request.Post("/api/echo")
     public React<StandardResult> echo(WSHttpRequest request) {
         return React.just(StandardResult.success("echo"));
+    }
+
+    @Request.Read("/api/user")
+    public React<StandardResult> user(@Model HttpModel.User user) {
+        return React.emitter(() -> {
+            String name = user.getName();
+            return StandardResult.success("user-" + name + " created");
+        });
     }
 }

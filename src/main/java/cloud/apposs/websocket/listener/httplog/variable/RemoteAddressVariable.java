@@ -1,0 +1,18 @@
+package cloud.apposs.websocket.listener.httplog.variable;
+
+import cloud.apposs.rest.Handler;
+import cloud.apposs.websocket.WSHttpRequest;
+import cloud.apposs.websocket.WSHttpResponse;
+
+import java.net.InetSocketAddress;
+
+/**
+ * 请求远程地址，对应参数：$remote_addr
+ */
+public class RemoteAddressVariable extends AbstractVariable {
+    @Override
+    public String parse(WSHttpRequest request, WSHttpResponse response, Handler handler, Throwable t) {
+        InetSocketAddress address = (InetSocketAddress) request.getRemoteAddr();
+        return address.getHostString();
+    }
+}

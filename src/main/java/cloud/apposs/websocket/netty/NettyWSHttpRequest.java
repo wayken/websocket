@@ -1,9 +1,9 @@
 package cloud.apposs.websocket.netty;
 
+import cloud.apposs.util.JsonUtil;
 import cloud.apposs.util.MediaType;
 import cloud.apposs.util.Param;
 import cloud.apposs.websocket.WSHttpRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
@@ -26,8 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 基于Netty FullHttpRequest的WSHttpRequest实现
  */
 public class NettyWSHttpRequest implements WSHttpRequest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     private final FullHttpRequest request;
 
     private String path;
@@ -156,8 +154,10 @@ public class NettyWSHttpRequest implements WSHttpRequest {
                 String body = request.content().toString(StandardCharsets.UTF_8);
                 try {
                     if (contentType != null && contentType.contains("application/json")) {
-                        Map<String, Object> json = MAPPER.readValue(body, Map.class);
-                        bodyParam.putAll(json);
+                        Param param = JsonUtil.parseJsonParam(body);
+                        if (param != null) {
+                            bodyParam.putAll(param);
+                        }
                     } else {
                         QueryStringDecoder bodyDecoder = new QueryStringDecoder("?" + body);
                         for (Map.Entry<String, List<String>> entry : bodyDecoder.parameters().entrySet()) {

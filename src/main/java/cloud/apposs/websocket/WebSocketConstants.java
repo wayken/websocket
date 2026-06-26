@@ -14,4 +14,5 @@ public class WebSocketConstants {
     public static final String VERSION = "v1.0.0.RELEASE";
 
     public static final String COMMAND_ATTRIBUTE_START_TIME = "AttrStartTime";
+    public static final String REQUEST_ATTRIBUTE_START_TIME = "AttrStartTime";
 }

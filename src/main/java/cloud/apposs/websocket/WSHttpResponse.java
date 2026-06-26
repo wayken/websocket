@@ -7,6 +7,11 @@ import java.io.IOException;
  */
 public interface WSHttpResponse {
     /**
+     * 获取响应状态码
+     */
+    String getStatus();
+
+    /**
      * 设置响应状态码
      */
     void setStatus(int status);
