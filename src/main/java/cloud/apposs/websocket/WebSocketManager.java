@@ -26,7 +26,11 @@ import java.util.List;
  * WebSocket全局上下文管理，用于保存全局共享对象，如命名空间，拦截器等
  */
 public final class WebSocketManager {
+    private final WSConfig configuraion;
+
     private final NamespacesHub namespacesHub;
+
+    private final WSSessionBox sessionBox;
 
     private final CancelableScheduler scheduler;
 
@@ -41,7 +45,9 @@ public final class WebSocketManager {
     private final CommandarListenerSupport commandarListenerSupport;
 
     public WebSocketManager(
+            WSConfig configuraion,
             NamespacesHub namespacesHub,
+            WSSessionBox sessionBox,
             CancelableScheduler scheduler,
             IDistributedService distributedService,
             CommandarRouter commandarRouter,
@@ -49,7 +55,9 @@ public final class WebSocketManager {
             CommandarInterceptorSupport commandarInterceptorSupport,
             CommandarListenerSupport commandarListenerSupport
     ) {
+        this.configuraion = configuraion;
         this.namespacesHub = namespacesHub;
+        this.sessionBox = sessionBox;
         this.scheduler = scheduler;
         this.distributedService = distributedService;
         this.commandarRouter = commandarRouter;
@@ -58,8 +66,16 @@ public final class WebSocketManager {
         this.commandarListenerSupport = commandarListenerSupport;
     }
 
+    public WSConfig getConfiguraion() {
+        return configuraion;
+    }
+
     public NamespacesHub getNamespacesHub() {
         return namespacesHub;
+    }
+
+    public WSSessionBox getSessionBox() {
+        return sessionBox;
     }
 
     public CancelableScheduler getScheduler() {

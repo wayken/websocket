@@ -3,11 +3,11 @@ package cloud.apposs.websocket.netty;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSSession;
 import cloud.apposs.websocket.WSSessionBox;
-import cloud.apposs.websocket.WebSocketManager;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.protocol.HandshakeData;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.protocol.PacketType;
+import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -19,7 +19,7 @@ import java.util.UUID;
  * 基于Netty的WebSocket会话
  */
 public class WSNettySession extends WSSession  {
-    private final ChannelHandlerContext context;
+    private final ChannelHandlerContext channelHandlerContext;
 
     public WSNettySession(
             UUID sessionId,
@@ -29,27 +29,27 @@ public class WSNettySession extends WSSession  {
             Map<String, String> headers,
             WSSessionBox sessionBox,
             HandshakeData handshakeData,
-            ChannelHandlerContext context,
-            WebSocketManager manager
+            ChannelHandlerContext channelHandlerContext,
+            CancelableScheduler scheduler
     ) {
-        super(sessionId, path, configuration, namespace, headers, sessionBox, handshakeData, manager);
-        this.context = context;
+        super(sessionId, path, configuration, namespace, headers, sessionBox, handshakeData, scheduler);
+        this.channelHandlerContext = channelHandlerContext;
     }
 
     @Override
     public boolean isChannelOpen() {
-        return context.channel().isActive();
+        return channelHandlerContext.channel().isActive();
     }
 
     @Override
     public boolean handlePacketSend(byte[] packet) {
-        return context.channel().writeAndFlush(packet) != null;
+        return channelHandlerContext.channel().writeAndFlush(packet) != null;
     }
 
     @Override
     public void handleChannelDisconnect() {
         Packet packet = new Packet(PacketType.DISCONNECT);
-        ChannelFuture future = context.channel().writeAndFlush(packet);
+        ChannelFuture future = channelHandlerContext.channel().writeAndFlush(packet);
         if (future != null) {
             future.addListener(ChannelFutureListener.CLOSE);
         }

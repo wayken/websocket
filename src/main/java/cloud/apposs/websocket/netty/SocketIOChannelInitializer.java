@@ -4,7 +4,6 @@ import cloud.apposs.rest.Restful;
 import cloud.apposs.websocket.WSConfig;
 import cloud.apposs.websocket.WSHttpRequest;
 import cloud.apposs.websocket.WSHttpResponse;
-import cloud.apposs.websocket.WSSessionBox;
 import cloud.apposs.websocket.WebSocketManager;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -46,15 +45,11 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
 
     private final WebSocketManager manager;
 
-    private final WSSessionBox sessionBox;
-
-    public SocketIOChannelInitializer(WebSocketManager manager, WSSessionBox sessionBox) {
+    public SocketIOChannelInitializer(WebSocketManager manager) {
         this.manager = manager;
-        this.sessionBox = sessionBox;
     }
 
-    public SocketIOChannelInitializer initialize(WSConfig configuration,
-                                                   Restful<WSHttpRequest, WSHttpResponse> restful) throws Exception {
+    public SocketIOChannelInitializer initialize(WSConfig configuration, Restful<WSHttpRequest, WSHttpResponse> restful) throws Exception {
         this.configuration = configuration;
         boolean isSsl = configuration.getKeyStore() != null;
         if (isSsl) {
@@ -65,7 +60,7 @@ public class SocketIOChannelInitializer extends ChannelInitializer<Channel>  {
             }
         }
 
-        this.authorizeHandler = new AuthorizeHandler(configuration, manager, sessionBox);
+        this.authorizeHandler = new AuthorizeHandler(configuration, manager);
         this.webSocketHandler = new WebSocketHandler(configuration, manager);
         this.packetEncodeHandler = new PacketEncodeHandler();
         NettyHandlerProcess handlerProcess = new NettyHandlerProcess();

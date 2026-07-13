@@ -8,6 +8,7 @@ import cloud.apposs.websocket.protocol.HandshakeData;
 import cloud.apposs.websocket.protocol.Packet;
 import cloud.apposs.websocket.protocol.PacketEncoder;
 import cloud.apposs.websocket.protocol.PacketType;
+import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import cloud.apposs.websocket.scheduler.SchedulerKey;
 
 import java.io.IOException;
@@ -41,8 +42,8 @@ public abstract class WSSession {
     // 会话握手数据
     protected final HandshakeData handshakeData;
 
-    // 全局上下文管理
-    private final WebSocketManager manager;
+    // 定时任务调度器，用于处理会话相关的定时任务，如心跳检测、超时处理等
+    private final CancelableScheduler scheduler;
 
     // 远程主机地址，通常从请求头中获取，如 Host 字段
     private String remoteHost;
@@ -58,7 +59,7 @@ public abstract class WSSession {
             Map<String, String> headers,
             WSSessionBox sessionBox,
             HandshakeData handshakeData,
-            WebSocketManager manager
+            CancelableScheduler scheduler
     ) {
         this.sessionId = sessionId;
         this.path = path;
@@ -67,7 +68,7 @@ public abstract class WSSession {
         this.headers = headers;
         this.sessionBox = sessionBox;
         this.handshakeData = handshakeData;
-        this.manager = manager;
+        this.scheduler = scheduler;
         namespace.addSession(this);
     }
 
@@ -323,7 +324,7 @@ public abstract class WSSession {
         cancelRenewal();
         // 创建新的分布式服务注册续期检测任务
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.RENEWAL, sessionId);
-        manager.getScheduler().schedule(key, () -> {
+        scheduler.schedule(key, () -> {
             WSSession session = sessionBox.getSession(sessionId);
             if (session != null && session.isChannelOpen()) {
                 IPubSubService pubSubService = namespace.getPubSubService();
@@ -335,7 +336,7 @@ public abstract class WSSession {
 
     public void cancelRenewal() {
         SchedulerKey key = new SchedulerKey(SchedulerKey.Type.RENEWAL, sessionId);
-        manager.getScheduler().cancel(key);
+        scheduler.cancel(key);
     }
 
     /**

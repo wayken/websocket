@@ -1,32 +1,27 @@
 package cloud.apposs.websocket.client;
 
-import cloud.apposs.websocket.protocol.Packet;
-
-/**
- * WebSocket客户端事件监听器
- */
-public interface WSClientListener {
+public interface LightWSBinaryListener {
     /**
      * 连接建立成功
      *
      * @param client 当前客户端实例
      */
-    void onConnect(WSClient client);
+    void onConnect(LightWSClient client);
 
     /**
-     * 收到服务端指令消息
+     * 收到服务端原始数据
      *
      * @param client 当前客户端实例
-     * @param packet 收到的指令消息包
+     * @param data 原始数据
      */
-    void onCommand(WSClient client, Packet packet);
+    void onBinaryReceived(LightWSClient client, byte[] data) throws Exception;
 
     /**
      * 连接断开
      *
      * @param client 当前客户端实例
      */
-    void onDisconnect(WSClient client);
+    void onDisconnect(LightWSClient client);
 
     /**
      * 发生异常
@@ -34,5 +29,5 @@ public interface WSClientListener {
      * @param client 当前客户端实例
      * @param cause 异常原因
      */
-    void onError(WSClient client, Throwable cause);
+    void onError(LightWSClient client, Throwable cause);
 }

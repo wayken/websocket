@@ -42,7 +42,7 @@ public class TestWebSocketClient {
     @Test
     public void testDecodeCommandPacket() throws Exception {
         JsonSupport jsonSupport = new JacksonJsonSupport();
-        ClientPacketDecoder decoder = new ClientPacketDecoder(jsonSupport, "utf-8");
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(jsonSupport, "utf-8");
 
         // 构造一个COMMAND包并编码
         Packet sent = new Packet(PacketType.COMMAND);
@@ -62,7 +62,7 @@ public class TestWebSocketClient {
     @Test
     public void testDecodeDisconnectPacket() throws Exception {
         JsonSupport jsonSupport = new JacksonJsonSupport();
-        ClientPacketDecoder decoder = new ClientPacketDecoder(jsonSupport, "utf-8");
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(jsonSupport, "utf-8");
 
         Packet sent = new Packet(PacketType.DISCONNECT);
         byte[] encoded = PacketEncoder.encode(sent, jsonSupport);
@@ -75,7 +75,7 @@ public class TestWebSocketClient {
     @Test
     public void testDecodeNullReturnsNull() throws Exception {
         JsonSupport jsonSupport = new JacksonJsonSupport();
-        ClientPacketDecoder decoder = new ClientPacketDecoder(jsonSupport, "utf-8");
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(jsonSupport, "utf-8");
         assertNull(decoder.decode(null));
         assertNull(decoder.decode(ByteBuffer.allocate(0)));
     }
@@ -122,7 +122,7 @@ public class TestWebSocketClient {
         client.sendCommand("chat", "hello");
         assertNotNull(client.lastSentData);
         // 验证发送的数据能被解码
-        ClientPacketDecoder decoder = new ClientPacketDecoder(config.getJsonSupport(), config.getCharset());
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(config.getJsonSupport(), config.getCharset());
         Packet decoded = decoder.decode(ByteBuffer.wrap(client.lastSentData));
         assertEquals("chat", decoded.getCommand());
     }
@@ -213,7 +213,7 @@ public class TestWebSocketClient {
     @Test
     public void testDecodeCommandWithAttachment() throws Exception {
         JsonSupport jsonSupport = new JacksonJsonSupport();
-        ClientPacketDecoder decoder = new ClientPacketDecoder(jsonSupport, "utf-8");
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(jsonSupport, "utf-8");
 
         // 构造带附件的COMMAND包
         Packet sent = new Packet(PacketType.COMMAND);
@@ -240,7 +240,7 @@ public class TestWebSocketClient {
     @Test
     public void testDecodeCommandWithMultipleAttachments() throws Exception {
         JsonSupport jsonSupport = new JacksonJsonSupport();
-        ClientPacketDecoder decoder = new ClientPacketDecoder(jsonSupport, "utf-8");
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(jsonSupport, "utf-8");
 
         Packet sent = new Packet(PacketType.COMMAND);
         sent.setCommand("multi");
@@ -283,7 +283,7 @@ public class TestWebSocketClient {
         assertEquals(2, client.allSentData.size());
 
         // 验证主包可解码
-        ClientPacketDecoder decoder = new ClientPacketDecoder(config.getJsonSupport(), config.getCharset());
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(config.getJsonSupport(), config.getCharset());
         Packet decoded = decoder.decode(ByteBuffer.wrap(client.allSentData.get(0)));
         assertNull(decoded); // 等待附件
 
@@ -306,7 +306,7 @@ public class TestWebSocketClient {
         assertFalse(client.allSentData.isEmpty());
 
         // 验证响应包含commandId
-        ClientPacketDecoder decoder = new ClientPacketDecoder(config.getJsonSupport(), config.getCharset());
+        WSClientPacketDecoder decoder = new WSClientPacketDecoder(config.getJsonSupport(), config.getCharset());
         Packet decoded = decoder.decode(ByteBuffer.wrap(client.allSentData.get(0)));
         assertNotNull(decoded);
         assertEquals(PacketType.COMMAND, decoded.getType());

@@ -1,10 +1,8 @@
 package cloud.apposs.websocket.client.netty;
 
-import cloud.apposs.websocket.client.WSClientPacketDecoder;
-import cloud.apposs.websocket.client.WSClient;
+import cloud.apposs.websocket.client.LightWSBinaryListener;
+import cloud.apposs.websocket.client.LightWSClient;
 import cloud.apposs.websocket.client.WSClientConfig;
-import cloud.apposs.websocket.client.WSClientListener;
-import cloud.apposs.websocket.protocol.Packet;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -21,22 +19,15 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 基于Netty的WebSocket客户端实现
- */
-public class NettyWSClient extends WSClient {
+public class NettyLightWSClient extends LightWSClient {
     private EventLoopGroup group;
 
     private Channel channel;
 
-    private final WSClientPacketDecoder decoder;
-
-    public NettyWSClient(WSClientConfig config, WSClientListener listener) {
+    public NettyLightWSClient(WSClientConfig config, LightWSBinaryListener listener) {
         super(config, listener);
-        this.decoder = new WSClientPacketDecoder(config.getJsonSupport(), config.getCharset());
     }
 
     @Override
@@ -45,13 +36,13 @@ public class NettyWSClient extends WSClient {
         URI uri = new URI(config.getUri());
         WebSocketClientHandshaker handshaker = WebSocketClientHandshakerFactory.newHandshaker(
                 uri, WebSocketVersion.V13, null, true, new DefaultHttpHeaders());
-
-        final NettyWSClientHandler handler = new NettyWSClientHandler(handshaker);
+        final RawWSClientHandler handler = new RawWSClientHandler(handshaker);
 
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(group)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, config.getConnectTimeout())
+                .option(ChannelOption.SO_KEEPALIVE, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
@@ -65,13 +56,21 @@ public class NettyWSClient extends WSClient {
                         }
                         pipeline.addLast(new HttpClientCodec());
                         pipeline.addLast(new HttpObjectAggregator(65536));
-                        pipeline.addLast(new WebSocketFrameAggregator(65536));
+                        pipeline.addLast(new WebSocketFrameAggregator(65536 * 256));
                         pipeline.addLast(handler);
                     }
                 });
 
         channel = bootstrap.connect(config.getHost(), config.getPort()).sync().channel();
         handler.handshakeFuture().sync();
+    }
+
+    @Override
+    protected void handleSend(byte[] data) throws Exception {
+        if (channel == null || !channel.isActive()) {
+            throw new IllegalStateException("Channel is not active");
+        }
+        channel.writeAndFlush(new BinaryWebSocketFrame(Unpooled.wrappedBuffer(data)));
     }
 
     @Override
@@ -91,14 +90,6 @@ public class NettyWSClient extends WSClient {
     }
 
     @Override
-    protected void handleSend(byte[] data) throws Exception {
-        if (channel == null || !channel.isActive()) {
-            throw new IllegalStateException("Channel is not active");
-        }
-        channel.writeAndFlush(new BinaryWebSocketFrame(Unpooled.wrappedBuffer(data)));
-    }
-
-    @Override
     protected void handleScheduleReconnect(int delayMs) {
         if (group != null && !group.isShutdown()) {
             group.schedule(() -> {
@@ -112,14 +103,12 @@ public class NettyWSClient extends WSClient {
         }
     }
 
-    /**
-     * Netty WebSocket客户端Handler，处理握手和消息
-     */
-    private class NettyWSClientHandler extends SimpleChannelInboundHandler<Object> {
+    // Netty WebSocket 客户端 Handler
+    private class RawWSClientHandler extends SimpleChannelInboundHandler<Object> {
         private final WebSocketClientHandshaker handshaker;
         private ChannelPromise handshakeFuture;
 
-        NettyWSClientHandler(WebSocketClientHandshaker handshaker) {
+        RawWSClientHandler(WebSocketClientHandshaker handshaker) {
             this.handshaker = handshaker;
         }
 
@@ -152,13 +141,13 @@ public class NettyWSClient extends WSClient {
             }
             if (msg instanceof BinaryWebSocketFrame) {
                 ByteBuf buf = ((BinaryWebSocketFrame) msg).content();
-                ByteBuffer nioBuffer = buf.nioBuffer();
-                Packet packet = decoder.decode(nioBuffer);
-                if (packet != null) {
-                    onMessage(packet);
-                }
+                byte[] data = new byte[buf.readableBytes()];
+                buf.readBytes(data);
+                onBinaryReceived(data);
             } else if (msg instanceof CloseWebSocketFrame) {
                 channel.close();
+            } else if (msg instanceof PingWebSocketFrame) {
+                ctx.channel().writeAndFlush(new PongWebSocketFrame(((PingWebSocketFrame) msg).content().retain()));
             }
         }
 

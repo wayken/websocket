@@ -144,8 +144,10 @@ public class ApplicationHandler {
         for (CommandarInterceptor interceptor : interceptorList) {
             commandarInterceptorSupport.addInterceptor(interceptor);
         }
-        manager = new WebSocketManager(namespacesHub, scheduler, distributedService,
+        // 初始化系统全局上下文管理，并注入到IOC容器，方便其他组件通过依赖注入获取
+        manager = new WebSocketManager(configuration, namespacesHub, sessionBox, scheduler, distributedService,
                 commandarRouter, commandarInvocation, commandarInterceptorSupport, commandarListenerSupport);
+        beanFactory.addBean(manager);
         // 初始化Restful MVC框架，用于HTTP协议处理
         RestConfig restConfig = new RestConfig();
         restConfig.setBasePackage(basePackages);
@@ -155,7 +157,7 @@ public class ApplicationHandler {
         restful.getBeanFactory().addBean(contextHolder);
         restful.getBeanFactory().addBean(namespacesHub);
         restful.initialize();
-        pipeline = new SocketIOChannelInitializer(manager, sessionBox);
+        pipeline = new SocketIOChannelInitializer(manager);
         pipeline.initialize(configuration, restful);
         applicationListenerSupport.onStartup(configuration);
     }

@@ -11,7 +11,7 @@ import java.util.LinkedList;
 /**
  * 客户端数据包解码器，支持附件多帧接收和占位符替换
  */
-public class ClientPacketDecoder {
+public class WSClientPacketDecoder {
     private static final String QUOTES = "\"";
 
     private final JsonSupport jsonSupport;
@@ -20,7 +20,7 @@ public class ClientPacketDecoder {
     // 上一次解码的主包，用于等待附件帧
     private Packet lastBinaryPacket;
 
-    public ClientPacketDecoder(JsonSupport jsonSupport, String charset) {
+    public WSClientPacketDecoder(JsonSupport jsonSupport, String charset) {
         this.jsonSupport = jsonSupport;
         this.charset = charset;
     }

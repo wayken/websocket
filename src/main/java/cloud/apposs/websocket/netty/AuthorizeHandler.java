@@ -8,6 +8,7 @@ import cloud.apposs.websocket.WebSocketManager;
 import cloud.apposs.websocket.interceptor.CommandarInterceptorSupport;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.protocol.HandshakeData;
+import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import cloud.apposs.websocket.scheduler.SchedulerKey;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
@@ -31,12 +32,9 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
 
     private final WebSocketManager manager;
 
-    private final WSSessionBox sessionBox;
-
-    public AuthorizeHandler(WSConfig configuration, WebSocketManager manager, WSSessionBox sessionBox) {
+    public AuthorizeHandler(WSConfig configuration, WebSocketManager manager) {
         this.configuration = configuration;
         this.manager = manager;
-        this.sessionBox = sessionBox;
     }
 
     @Override
@@ -84,7 +82,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
         context.fireChannelRead(message);
     }
 
-    private boolean authorize(ChannelHandlerContext context, QueryStringDecoder decoder, String path, FullHttpRequest request) throws Exception {
+    private boolean authorize(ChannelHandlerContext channelHandlerContext, QueryStringDecoder decoder, String path, FullHttpRequest request) throws Exception {
         Map<String, List<String>> headers = new HashMap<>(request.headers().names().size());
         Map<String, List<String>> parameters = decoder.parameters();
         for (String name : request.headers().names()) {
@@ -92,7 +90,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
             headers.put(name, values);
         }
 
-        Channel channel = context.channel();
+        Channel channel = channelHandlerContext.channel();
         // 调用业务认证接口进行WebSocket拦截认证，因为Parameters是一个List，所以只取最后一个参数值
         Map<String, String> formatParameters = new HashMap<>();
         for (Map.Entry<String, List<String>> entry : parameters.entrySet()) {
@@ -121,7 +119,9 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter {
         for (Map.Entry<String, String> header : request.headers()) {
             formatHeaders.put(header.getKey(), header.getValue());
         }
-        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, formatHeaders, sessionBox, handshakeData, context, manager);
+        WSSessionBox sessionBox = manager.getSessionBox();
+        CancelableScheduler scheduler = manager.getScheduler();
+        WSSession session = new WSNettySession(sessionId, path, configuration, namespace, formatHeaders, sessionBox, handshakeData, channelHandlerContext, scheduler);
         channel.attr(ChannelAttributeKey.SESSION).set(session);
         sessionBox.addSession(session);
         session.scheduleRenewal();

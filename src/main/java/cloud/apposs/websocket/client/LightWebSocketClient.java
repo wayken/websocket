@@ -1,9 +1,9 @@
 package cloud.apposs.websocket.client;
 
-import cloud.apposs.websocket.client.netty.NettyWSClient;
+import cloud.apposs.websocket.client.netty.NettyLightWSClient;
 
 /**
- * WebSocket客户端启动入口，全局单例，提供创建、连接、关闭客户端的静态方法
+ * 轻量级WebSocket客户端启动入口，全局单例，提供创建、连接、关闭客户端的静态方法
  *
  * 使用示例：
  * <pre>
@@ -12,29 +12,29 @@ import cloud.apposs.websocket.client.netty.NettyWSClient;
  * config.setPort(7010);
  * config.setPath("/socket.io");
  *
- * WSClient client = WebSocketClient.connect(config, new WSClientListenerAdapter() {
+ * LightWSClient client = LightWebSocketClient.connect(config, new LightWSBinaryListenerAdapter() {
  *     &#64;Override
- *     public void onConnect(WSClient client) {
+ *     public void onConnect(LightWSClient client) {
  *         System.out.println("Connected!");
  *     }
  *     &#64;Override
- *     public void onCommand(WSClient client, Packet packet) {
+ *     public void onBinaryReceived(LightWSClient client, byte[] data) {
  *         System.out.println("Received: " + packet.getCommand());
  *     }
  * });
  *
- * client.sendCommand("chat", "Hello!");
+ * client.send("Hello!");
  * </pre>
  */
-public class WebSocketClient {
+public class LightWebSocketClient {
     /**
      * 创建并连接WebSocket客户端（使用默认Netty实现）
      *
      * @param config   客户端配置
      * @param listener 客户端事件监听器
      */
-    public static WSClient connect(WSClientConfig config, WSClientListener listener) throws Exception {
-        WSClient client = build(config, listener);
+    public static LightWSClient connect(WSClientConfig config, LightWSBinaryListener listener) throws Exception {
+        LightWSClient client = build(config, listener);
         client.connect();
         return client;
     }
@@ -45,8 +45,8 @@ public class WebSocketClient {
      * @param config   客户端配置
      * @param listener 客户端事件监听器
      */
-    public static WSClient build(WSClientConfig config, WSClientListener listener) {
-        return new NettyWSClient(config, listener);
+    public static LightWSClient build(WSClientConfig config, LightWSBinaryListener listener) {
+        return new NettyLightWSClient(config, listener);
     }
 
     /**
@@ -54,7 +54,7 @@ public class WebSocketClient {
      *
      * @param client 客户端实例
      */
-    public static void shutdown(WSClient client) {
+    public static void shutdown(LightWSClient client) {
         if (client != null) {
             client.shutdown();
         }
