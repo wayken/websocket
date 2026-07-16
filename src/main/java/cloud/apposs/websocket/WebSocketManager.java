@@ -1,6 +1,7 @@
 package cloud.apposs.websocket;
 
 import cloud.apposs.logger.Logger;
+import cloud.apposs.util.Errno;
 import cloud.apposs.websocket.annotation.OnConnect;
 import cloud.apposs.websocket.annotation.OnDisconnect;
 import cloud.apposs.websocket.annotation.OnError;
@@ -15,11 +16,13 @@ import cloud.apposs.websocket.listener.CommandarListenerSupport;
 import cloud.apposs.websocket.namespace.Namespace;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.Packet;
+import cloud.apposs.websocket.resolver.exception.CommandExceptionResolver;
 import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import cloud.apposs.rest.validator.IChecker;
 import cloud.apposs.rest.validator.Validator;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 /**
@@ -44,6 +47,8 @@ public final class WebSocketManager {
 
     private final CommandarListenerSupport commandarListenerSupport;
 
+    private final CommandExceptionResolver commandExceptionResolver;
+
     public WebSocketManager(
             WSConfig configuraion,
             NamespacesHub namespacesHub,
@@ -53,7 +58,8 @@ public final class WebSocketManager {
             CommandarRouter commandarRouter,
             CommandarInvocation commandarInvocation,
             CommandarInterceptorSupport commandarInterceptorSupport,
-            CommandarListenerSupport commandarListenerSupport
+            CommandarListenerSupport commandarListenerSupport,
+            CommandExceptionResolver commandExceptionResolver
     ) {
         this.configuraion = configuraion;
         this.namespacesHub = namespacesHub;
@@ -64,6 +70,7 @@ public final class WebSocketManager {
         this.commandarInvocation = commandarInvocation;
         this.commandarInterceptorSupport = commandarInterceptorSupport;
         this.commandarListenerSupport = commandarListenerSupport;
+        this.commandExceptionResolver = commandExceptionResolver;
     }
 
     public WSConfig getConfiguraion() {
@@ -112,7 +119,7 @@ public final class WebSocketManager {
         }
     }
 
-    public void onCommand(WSSession session, Packet packet) throws Exception {
+    public void onCommand(WSSession session, Packet packet) throws Throwable {
         List<Commandar> onCommandList = commandarRouter.getCommandar(session.getPath(), packet.getCommand());
         if (onCommandList == null) {
             return;
@@ -138,7 +145,17 @@ public final class WebSocketManager {
                 commandarInvocation.invoke(commandar, arguments);
             } catch (Throwable ex) {
                 cause = ex;
-                throw ex;
+                // 如果请求携带了commandId（即RPC请求），则将错误信息通过错误响应返回给客户端
+                String commandId = packet.getMetadata().getCommandId();
+                if (commandId != null && !commandId.isEmpty()) {
+                    try {
+                        handleCommandError(session, commandId, ex);
+                    } catch (Throwable e) {
+                        throw e;
+                    }
+                } else {
+                    throw ex;
+                }
             } finally {
                 commandarInterceptorSupport.afterCompletion(commandar, session, cause);
                 commandarListenerSupport.commandarCompletion(commandar, session, cause);
@@ -207,5 +224,17 @@ public final class WebSocketManager {
             }
             clazz = clazz.getSuperclass();
         }
+    }
+
+    // 处理指令执行异常，将错误信息通过带status的错误响应包返回给客户端
+    private void handleCommandError(WSSession session, String commandId, Throwable cause) throws Throwable {
+        if (cause instanceof InvocationTargetException) {
+            cause = ((InvocationTargetException) cause).getTargetException();
+        }
+        if (commandExceptionResolver == null) {
+            throw cause;
+        }
+        Errno result = commandExceptionResolver.resolveCommandException(commandId, cause);
+        session.sendResponse(commandId, result.value(), result.description());
     }
 }

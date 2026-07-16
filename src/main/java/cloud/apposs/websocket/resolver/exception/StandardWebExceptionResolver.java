@@ -24,8 +24,8 @@ import java.sql.SQLException;
  * 如果属于业务自定义的异常，则继承此类并注解@Component，底层会自动选该业务异常实现类
  */
 @Component
-public class StandardExceptionResolver extends MappingExceptionResolver<WSHttpRequest, WSHttpResponse> {
-    public StandardExceptionResolver() {
+public class StandardWebExceptionResolver extends MappingExceptionResolver<WSHttpRequest, WSHttpResponse> {
+    public StandardWebExceptionResolver() {
         this.defaultHandler = new DefaultExceptionHandler();
         this.addExceptionHandler(new IllegalArgumentExceptionHandler());
         this.addExceptionHandler(new ReadOnlyExceptionHandler());

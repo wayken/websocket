@@ -11,7 +11,6 @@ import cloud.apposs.websocket.WSHttpResponse;
 import java.util.Map;
 
 @Component
-@Order(-100)
 public class FileViewResolver extends AbstractViewResolver<WSHttpRequest, WSHttpResponse> {
     @Override
     public boolean supports(WSHttpRequest request, WSHttpResponse response, Object result) {

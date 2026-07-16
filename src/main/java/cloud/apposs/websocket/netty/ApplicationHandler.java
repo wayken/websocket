@@ -20,6 +20,7 @@ import cloud.apposs.websocket.listener.CommandarListenerSupport;
 import cloud.apposs.websocket.namespace.NamespacesHub;
 import cloud.apposs.websocket.protocol.JsonSupport;
 import cloud.apposs.websocket.protocol.JsonSupportWrapper;
+import cloud.apposs.websocket.resolver.exception.CommandExceptionResolver;
 import cloud.apposs.websocket.scheduler.CancelableScheduler;
 import cloud.apposs.websocket.scheduler.HashedWheelTimeoutScheduler;
 import cloud.apposs.websocket.util.Orders;
@@ -145,8 +146,9 @@ public class ApplicationHandler {
             commandarInterceptorSupport.addInterceptor(interceptor);
         }
         // 初始化系统全局上下文管理，并注入到IOC容器，方便其他组件通过依赖注入获取
+        CommandExceptionResolver commandExceptionResolver = beanFactory.getBean(CommandExceptionResolver.class);
         manager = new WebSocketManager(configuration, namespacesHub, sessionBox, scheduler, distributedService,
-                commandarRouter, commandarInvocation, commandarInterceptorSupport, commandarListenerSupport);
+                commandarRouter, commandarInvocation, commandarInterceptorSupport, commandarListenerSupport, commandExceptionResolver);
         beanFactory.addBean(manager);
         // 初始化Restful MVC框架，用于HTTP协议处理
         RestConfig restConfig = new RestConfig();

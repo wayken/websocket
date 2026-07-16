@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 将每个异常由具体的异常Handler解析处理，提升异常处理速度
  */
-public class MappingExceptionResolver<R, P> implements WebExceptionResolver<R, P> {
+public class MappingWebExceptionResolver<R, P> implements WebExceptionResolver<R, P> {
     protected ExceptionHandler<R, P> defaultHandler;
 
     protected final Map<Class<? extends Throwable>, ExceptionHandler<R, P>> exceptionHandlerMapping =

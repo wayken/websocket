@@ -197,8 +197,20 @@ public abstract class WSSession {
      * @param parameter 数据包，可由业务自定义JSON对象格式
      */
     public void sendResponse(String id, Object... parameter) throws Exception {
+        sendResponse(id, 0, parameter);
+    }
+
+    /**
+     * 发送消息响应包，主要应用于 WEBSOCKET RPC 请求-响应通讯场景
+     *
+     * @param id        指令ID
+     * @param status    状态码
+     * @param parameter 数据包，可由业务自定义JSON对象格式
+     */
+    public void sendResponse(String id, int status, Object... parameter) throws Exception {
         Packet packet = new Packet(PacketType.COMMAND);
         packet.getMetadata().setCommandId(id);
+        packet.setStatus((short) status);
         packet.getParameter().setArguments(Arrays.asList(parameter));
         send(packet);
     }
