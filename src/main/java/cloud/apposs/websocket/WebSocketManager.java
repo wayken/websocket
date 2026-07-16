@@ -119,7 +119,7 @@ public final class WebSocketManager {
         }
     }
 
-    public void onCommand(WSSession session, Packet packet) throws Throwable {
+    public void onCommand(WSSession session, Packet packet) throws Exception {
         List<Commandar> onCommandList = commandarRouter.getCommandar(session.getPath(), packet.getCommand());
         if (onCommandList == null) {
             return;
@@ -151,7 +151,7 @@ public final class WebSocketManager {
                     try {
                         handleCommandError(session, commandId, ex);
                     } catch (Throwable e) {
-                        throw e;
+                        Logger.error(e, "Failed to handle command error for commandId: " + commandId);
                     }
                 } else {
                     throw ex;
@@ -235,6 +235,6 @@ public final class WebSocketManager {
             throw cause;
         }
         Errno result = commandExceptionResolver.resolveCommandException(commandId, cause);
-        session.sendResponse(commandId, result.value(), result.description());
+        session.sendErrorResponse(commandId, result.value(), result.description());
     }
 }
