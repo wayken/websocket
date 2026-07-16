@@ -1,6 +1,8 @@
 package cloud.apposs.websocket;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 /**
  * HTTP响应抽象接口，屏蔽底层网络框架的具体实现
@@ -35,6 +37,14 @@ public interface WSHttpResponse {
      * 响应字节数据
      */
     void write(byte[] content, boolean flush) throws IOException;
+
+    /**
+     * Writes a file response. Network implementations can override this method
+     * to use an operating-system zero-copy transfer.
+     */
+    default void write(File file, boolean flush) throws IOException {
+        write(Files.readAllBytes(file.toPath()), flush);
+    }
 
     /**
      * 刷新输出
