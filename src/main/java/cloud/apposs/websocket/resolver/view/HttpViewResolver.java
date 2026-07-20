@@ -2,6 +2,7 @@ package cloud.apposs.websocket.resolver.view;
 
 import cloud.apposs.ioc.annotation.Component;
 import cloud.apposs.rest.RestConfig;
+import cloud.apposs.rest.annotation.Order;
 import cloud.apposs.rest.view.ViewResolver;
 import cloud.apposs.util.StandardResult;
 import cloud.apposs.websocket.WSHttpRequest;
@@ -14,6 +15,7 @@ import java.nio.charset.Charset;
  * HTTP视图渲染器，将Handler返回结果以JSON格式输出到HTTP响应
  */
 @Component
+@Order(102400)
 public class HttpViewResolver implements ViewResolver<WSHttpRequest, WSHttpResponse> {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private Charset charset = Charset.forName("UTF-8");

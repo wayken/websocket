@@ -146,7 +146,7 @@ public class ApplicationHandler {
             commandarInterceptorSupport.addInterceptor(interceptor);
         }
         // 初始化系统全局上下文管理，并注入到IOC容器，方便其他组件通过依赖注入获取
-        CommandExceptionResolver commandExceptionResolver = beanFactory.getBean(CommandExceptionResolver.class);
+        CommandExceptionResolver commandExceptionResolver = beanFactory.getBeanHierarchy(CommandExceptionResolver.class);
         manager = new WebSocketManager(configuration, namespacesHub, sessionBox, scheduler, distributedService,
                 commandarRouter, commandarInvocation, commandarInterceptorSupport, commandarListenerSupport, commandExceptionResolver);
         beanFactory.addBean(manager);
