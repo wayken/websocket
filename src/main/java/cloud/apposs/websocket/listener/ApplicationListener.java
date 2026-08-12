@@ -10,14 +10,14 @@ public interface ApplicationListener extends EventListener {
      *
      * @param config WebSocket配置
      */
-    void onInitialize(WSConfig config);
+    void onInitialize(WSConfig config) throws Exception;
 
     /**
      * 在服务启动后监听
      *
      * @param config WebSocket配置
      */
-    void onStartup(WSConfig config);
+    void onStartup(WSConfig config) throws Exception;
 
     /**
      * 在服务关闭时监听

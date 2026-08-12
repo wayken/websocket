@@ -20,7 +20,7 @@ public final class ApplicationListenerSupport {
         }
     }
 
-    public void onStartup(WSConfig config) {
+    public void onStartup(WSConfig config) throws Exception {
         for (int i = 0; i < listenerList.size(); i++) {
             ApplicationListener listener = listenerList.get(i);
             listener.onStartup(config);
